@@ -9,12 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "next": "16.0.6",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "@tanstack/react-query": "^5.90.11",
+    "@types/pdfmake": "^0.2.12",
+    "axios": "^1.13.2",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.556.0",
+    "next": "16.0.7",
+    "pdfmake": "^0.2.20",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "react-hot-toast": "^2.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
