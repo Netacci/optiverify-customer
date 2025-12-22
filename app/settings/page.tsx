@@ -7,6 +7,8 @@ import { getCurrentUser, changePassword } from "@/api";
 import DashboardLayout from "@/components/DashboardLayout";
 import { AxiosError } from "axios";
 
+export const dynamic = 'force-static';
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"profile" | "password">("profile");
   const [passwordData, setPasswordData] = useState({

@@ -166,6 +166,9 @@ function ManagedServicePaymentPageContent({
   );
 }
 
+export const dynamic = "force-static";
+export const dynamicParams = true;
+
 export default function ManagedServicePaymentPage({
   params,
 }: {

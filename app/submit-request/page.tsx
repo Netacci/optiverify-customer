@@ -14,6 +14,8 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import axios from "axios";
 
+export const dynamic = "force-static";
+
 export default function SubmitRequestPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({

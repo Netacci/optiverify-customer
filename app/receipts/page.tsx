@@ -5,6 +5,8 @@ import { getAllReceipts } from "@/api";
 import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 
+export const dynamic = "force-static";
+
 export default function ReceiptsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["receipts"],
@@ -32,8 +34,12 @@ export default function ReceiptsPage() {
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Receipts</h1>
-          <p className="text-gray-600">View all your payment receipts and invoices</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Payment Receipts
+          </h1>
+          <p className="text-gray-600">
+            View all your payment receipts and invoices
+          </p>
         </div>
 
         {isLoading ? (
@@ -55,8 +61,12 @@ export default function ReceiptsPage() {
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No receipts found</h3>
-            <p className="text-gray-600">You haven&apos;t made any payments yet.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              No receipts found
+            </h3>
+            <p className="text-gray-600">
+              You haven&apos;t made any payments yet.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -80,7 +90,9 @@ export default function ReceiptsPage() {
                             : "bg-purple-100 text-purple-800"
                         }`}
                       >
-                        {receipt.type === "match_report" ? "Match Report" : "Managed Service"}
+                        {receipt.type === "match_report"
+                          ? "Match Report"
+                          : "Managed Service"}
                       </span>
                       {receipt.planType && (
                         <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
@@ -93,11 +105,12 @@ export default function ReceiptsPage() {
                         ? receipt.request?.category || "Match Report"
                         : receipt.service?.category || "Managed Service"}
                     </h3>
-                    {receipt.type === "match_report" && receipt.request?.specifications && (
-                      <p className="text-sm text-gray-600 line-clamp-1 mb-2">
-                        {receipt.request.specifications}
-                      </p>
-                    )}
+                    {receipt.type === "match_report" &&
+                      receipt.request?.specifications && (
+                        <p className="text-sm text-gray-600 line-clamp-1 mb-2">
+                          {receipt.request.specifications}
+                        </p>
+                      )}
                     <p className="text-sm text-gray-500">
                       Paid on {formatDate(receipt.paidAt)}
                     </p>
@@ -108,7 +121,12 @@ export default function ReceiptsPage() {
                     </p>
                     <div className="flex items-center gap-2 text-blue-600 text-sm font-medium">
                       <span>View Receipt</span>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -127,4 +145,3 @@ export default function ReceiptsPage() {
     </DashboardLayout>
   );
 }
-

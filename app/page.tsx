@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/api";
 
+export const dynamic = 'force-static';
+
 export default function Home() {
   const router = useRouter();
 

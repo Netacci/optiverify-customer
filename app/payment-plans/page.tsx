@@ -639,6 +639,8 @@ function PaymentPlansPageContent() {
   );
 }
 
+export const dynamic = "force-static";
+
 export default function PaymentPlansPage() {
   return (
     <Suspense

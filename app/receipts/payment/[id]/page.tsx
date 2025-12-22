@@ -6,6 +6,9 @@ import { getPaymentReceipt } from "@/api";
 import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 
+export const dynamic = 'force-static';
+export const dynamicParams = true;
+
 export default function PaymentReceiptPage({
   params,
 }: {

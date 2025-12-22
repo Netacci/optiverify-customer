@@ -794,6 +794,8 @@ function BillingPageContent() {
   );
 }
 
+export const dynamic = "force-static";
+
 export default function BillingPage() {
   return (
     <Suspense

@@ -171,6 +171,8 @@ function CreatePasswordPageContent() {
   );
 }
 
+export const dynamic = 'force-static';
+
 export default function CreatePasswordPage() {
   return (
     <Suspense

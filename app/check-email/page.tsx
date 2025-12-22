@@ -94,6 +94,8 @@ function CheckEmailPageContent() {
   );
 }
 
+export const dynamic = "force-static";
+
 export default function CheckEmailPage() {
   return (
     <Suspense

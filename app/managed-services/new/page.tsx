@@ -618,6 +618,8 @@ function NewManagedServicePageContent() {
   );
 }
 
+export const dynamic = "force-static";
+
 export default function NewManagedServicePage() {
   return (
     <Suspense

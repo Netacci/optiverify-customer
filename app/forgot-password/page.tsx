@@ -7,6 +7,8 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { AxiosError } from "axios";
 
+export const dynamic = "force-static";
+
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -20,7 +22,9 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword(email);
       setSent(true);
-      toast.success("If an account exists with this email, a password reset link has been sent");
+      toast.success(
+        "If an account exists with this email, a password reset link has been sent"
+      );
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>;
       const errorMessage =
@@ -77,7 +81,9 @@ export default function ForgotPasswordPage() {
           <div className="text-center space-y-4">
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <p className="text-sm text-green-800">
-                We&apos;ve sent a password reset link to <strong>{email}</strong>. Please check your inbox and click the link to reset your password.
+                We&apos;ve sent a password reset link to{" "}
+                <strong>{email}</strong>. Please check your inbox and click the
+                link to reset your password.
               </p>
             </div>
             <p className="text-sm text-gray-600">
@@ -104,4 +110,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-

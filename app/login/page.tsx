@@ -7,6 +7,8 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { AxiosError } from "axios";
 
+export const dynamic = 'force-static';
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");

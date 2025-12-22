@@ -259,6 +259,8 @@ function ResetPasswordPageContent() {
   );
 }
 
+export const dynamic = 'force-static';
+
 export default function ResetPasswordPage() {
   return (
     <Suspense

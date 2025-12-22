@@ -733,6 +733,8 @@ function FeedbackPageContent() {
   );
 }
 
+export const dynamic = "force-static";
+
 export default function FeedbackPage() {
   return (
     <Suspense

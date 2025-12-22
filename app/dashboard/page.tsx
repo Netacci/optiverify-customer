@@ -10,6 +10,8 @@ import {
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 
+export const dynamic = "force-static";
+
 export default function DashboardPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["userRequests"],

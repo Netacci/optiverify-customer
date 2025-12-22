@@ -113,6 +113,8 @@ function VerifyPageContent() {
   return null;
 }
 
+export const dynamic = 'force-static';
+
 export default function VerifyPage() {
   return (
     <Suspense

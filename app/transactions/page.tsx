@@ -7,6 +7,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 import Pagination from "@/components/Pagination";
 
+export const dynamic = "force-static";
+
 export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const limit = 20;
