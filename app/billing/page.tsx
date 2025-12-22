@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -18,7 +18,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 import { AxiosError } from "axios";
 
-export default function BillingPage() {
+function BillingPageContent() {
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [topUpQuantity, setTopUpQuantity] = useState(1);
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
@@ -791,5 +791,26 @@ export default function BillingPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+              <p className="text-gray-600 font-medium">
+                Loading billing page...
+              </p>
+            </div>
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <BillingPageContent />
+    </Suspense>
   );
 }
