@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getManagedServiceDetails,
@@ -26,7 +26,7 @@ const STAGES = [
   { id: "report_ready", label: "Final Report" },
 ];
 
-export default function ManagedServiceDetailsPage({
+function ManagedServiceDetailsPageContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -428,18 +428,18 @@ export default function ManagedServiceDetailsPage({
                     </div>
 
                     {/* Summary - Only show if report is not fully unlocked (savings fee not paid) */}
-                    {request.finalReport.summary && 
-                     request.savingsFeeStatus !== "paid" && 
-                     (request.savingsAmount || 0) > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                          Summary
-                        </h3>
-                        <p className="text-gray-700 leading-relaxed">
-                          {request.finalReport.summary}
-                        </p>
-                      </div>
-                    )}
+                    {request.finalReport.summary &&
+                      request.savingsFeeStatus !== "paid" &&
+                      (request.savingsAmount || 0) > 0 && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            Summary
+                          </h3>
+                          <p className="text-gray-700 leading-relaxed">
+                            {request.finalReport.summary}
+                          </p>
+                        </div>
+                      )}
 
                     {/* Recommendations */}
                     {request.finalReport.recommendations && (
@@ -1062,5 +1062,30 @@ export default function ManagedServiceDetailsPage({
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ManagedServiceDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+              <p className="text-gray-600 font-medium">
+                Loading service details...
+              </p>
+            </div>
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <ManagedServiceDetailsPageContent params={params} />
+    </Suspense>
   );
 }

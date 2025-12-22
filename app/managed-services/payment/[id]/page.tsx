@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-export default function ManagedServicePaymentPage({
+function ManagedServicePaymentPageContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -54,18 +53,21 @@ export default function ManagedServicePaymentPage({
       toast.loading("Processing payment...", { id: "payment" });
 
       // Call backend to create Stripe checkout session
-      const response = await fetch(`${API_URL}/api/managed-services/payment/create-session`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          requestId,
-          amount: parseFloat(fee) * 100, // Convert to cents
-          email: email.trim(),
-        }),
-      });
+      const response = await fetch(
+        `${API_URL}/api/managed-services/payment/create-session`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            requestId,
+            amount: parseFloat(fee) * 100, // Convert to cents
+            email: email.trim(),
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -81,9 +83,12 @@ export default function ManagedServicePaymentPage({
         throw new Error("No payment URL received");
       }
     } catch (error) {
-      const err = error instanceof Error ? error : new Error("Failed to process payment");
+      const err =
+        error instanceof Error ? error : new Error("Failed to process payment");
       console.error("Payment error:", err);
-      toast.error(err.message || "Failed to process payment", { id: "payment" });
+      toast.error(err.message || "Failed to process payment", {
+        id: "payment",
+      });
     }
   };
 
@@ -109,11 +114,14 @@ export default function ManagedServicePaymentPage({
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <span className="text-lg font-medium text-gray-700">Service Fee</span>
+            <span className="text-lg font-medium text-gray-700">
+              Service Fee
+            </span>
             <span className="text-2xl font-bold text-blue-700">${fee}</span>
           </div>
           <p className="text-sm text-gray-600">
-            This fee covers our initial research, supplier verification, and RFQ preparation.
+            This fee covers our initial research, supplier verification, and RFQ
+            preparation.
           </p>
         </div>
 
@@ -158,3 +166,20 @@ export default function ManagedServicePaymentPage({
   );
 }
 
+export default function ManagedServicePaymentPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }
+    >
+      <ManagedServicePaymentPageContent params={params} />
+    </Suspense>
+  );
+}

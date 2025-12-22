@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -25,7 +25,7 @@ import Pagination from "@/components/Pagination";
 
 type FeedbackType = "request" | "matching_service" | "general" | "billing";
 
-export default function FeedbackPage() {
+function FeedbackPageContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -730,5 +730,24 @@ export default function FeedbackPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function FeedbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+              <p className="text-gray-600 font-medium">Loading feedback...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <FeedbackPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -15,7 +15,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AxiosError } from "axios";
 
-export default function PaymentPlansPage() {
+function PaymentPlansPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestId = searchParams.get("requestId");
@@ -636,5 +636,26 @@ export default function PaymentPlansPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function PaymentPlansPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+              <p className="text-gray-600 font-medium">
+                Loading payment options...
+              </p>
+            </div>
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <PaymentPlansPageContent />
+    </Suspense>
   );
 }

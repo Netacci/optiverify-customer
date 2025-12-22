@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   getRequestDetails,
@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { generateMatchReportPDF } from "@/utils/generatePDF";
 
-export default function RequestDetailsPage({
+function RequestDetailsPageContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -892,5 +892,28 @@ export default function RequestDetailsPage({
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function RequestDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+              <p className="text-gray-600 font-medium">Loading request...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <RequestDetailsPageContent params={params} />
+    </Suspense>
   );
 }

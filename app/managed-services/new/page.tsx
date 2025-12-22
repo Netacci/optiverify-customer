@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -57,7 +57,7 @@ const calculatePrice = (
   };
 };
 
-export default function NewManagedServicePage() {
+function NewManagedServicePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestId = searchParams.get("requestId");
@@ -615,5 +615,24 @@ export default function NewManagedServicePage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function NewManagedServicePage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+              <p className="text-gray-600 font-medium">Loading...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <NewManagedServicePageContent />
+    </Suspense>
   );
 }
