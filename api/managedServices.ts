@@ -41,7 +41,6 @@ export interface ManagedService {
   urgency?: string;
   urgencyDuration?: string;
   daysLeft?: number;
-  deadline?: Date;
   isOverdue?: boolean;
   createdAt: string;
   updatedAt: string;
