@@ -15,7 +15,7 @@ export default function ManagedServicePaymentPage() {
 
   useEffect(() => {
     if (!router.isReady) return;
-    
+
     setRequestId(id || "");
     const feeParam = router.query.fee as string;
     const emailParam = router.query.email as string;
@@ -122,8 +122,8 @@ export default function ManagedServicePaymentPage() {
               <span className="text-2xl font-bold text-blue-700">${fee}</span>
             </div>
             <p className="text-sm text-gray-600">
-              This fee covers our initial research, supplier verification, and RFQ
-              preparation.
+              This fee covers our initial research, supplier verification, and
+              RFQ preparation.
             </p>
           </div>
 
@@ -172,4 +172,3 @@ export default function ManagedServicePaymentPage() {
 export async function getServerSideProps() {
   return { props: {} };
 }
-

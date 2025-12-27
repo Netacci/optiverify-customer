@@ -161,7 +161,7 @@ export default function LoginPage() {
             <p className="text-sm text-gray-600">
               Don&apos;t have an account?{" "}
               <Link
-                href="http://localhost:3002"
+                href="https://optiverify.vercel.app"
                 className="text-blue-600 hover:text-blue-700 font-medium"
               >
                 Submit a request

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getManagedServiceDetails,
   syncManagedServicePayment,
+  createServiceFeePaymentSession,
   createSavingsFeePaymentSession,
   updateManagedService,
   getCategories,
@@ -16,7 +17,6 @@ import { AxiosError } from "axios";
 import Head from "next/head";
 
 const STAGES = [
-  { id: "submitted", label: "Submitted" },
   { id: "review", label: "Project Review" },
   { id: "rfq_prep", label: "RFQ Preparation" },
   { id: "supplier_outreach", label: "Supplier Outreach" },
@@ -81,6 +81,25 @@ export default function ManagedServiceDetailsPage() {
     },
   });
 
+  const serviceFeePaymentMutation = useMutation({
+    mutationFn: (data: { amount: number; email: string }) =>
+      createServiceFeePaymentSession(serviceId, data.amount, data.email),
+    onSuccess: (data) => {
+      if (data.success && data.data?.url) {
+        toast.success("Redirecting to payment...");
+        window.location.href = data.data.url;
+      } else {
+        toast.error("Failed to create payment session");
+      }
+    },
+    onError: (error: unknown) => {
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Failed to create payment session";
+      toast.error(errorMessage);
+    },
+  });
+
   const savingsFeePaymentMutation = useMutation({
     mutationFn: () => createSavingsFeePaymentSession(serviceId),
     onSuccess: (data) => {
@@ -121,7 +140,7 @@ export default function ManagedServiceDetailsPage() {
         refetch();
         toast.success("Payment successful! Processing request...");
         // Remove query param from URL
-        router.replace(router.pathname, undefined, { shallow: true });
+        router.replace(`/managed-services/${serviceId}`, undefined, { shallow: true });
       }, 2000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,9 +210,9 @@ export default function ManagedServiceDetailsPage() {
     );
   }
 
-  // Can edit if stage is 'payment_pending' or 'submitted'
+  // Can edit if stage is 'payment_pending' or 'review' (first stage after payment)
   const canEdit =
-    request.stage === "payment_pending" || request.stage === "submitted";
+    request.stage === "payment_pending" || request.stage === "review";
 
   return (
     <>
@@ -319,36 +338,64 @@ export default function ManagedServiceDetailsPage() {
           {/* Action Area / Details */}
           <div className="p-8 bg-gray-50">
             {request.stage === "payment_pending" ? (
+              // Always show "Make Payment" button when payment is pending
+              // The backend will handle creating a new session or updating existing one
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-yellow-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Payment Processing
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Your payment is currently being processed. Once confirmed,
-                  your request will be submitted automatically.
-                </p>
-                {canEdit && (
-                  <p className="text-sm text-blue-600 mb-4">
-                    You can still edit your request details while payment is
-                    pending.
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg
+                      className="w-8 h-8 text-blue-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Complete Payment
+                  </h2>
+                  <p className="text-gray-600 mb-6">
+                    Pay the service fee to start your managed sourcing request.
                   </p>
-                )}
-              </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-medium text-gray-700">
+                        Service Fee
+                      </span>
+                      <span className="text-2xl font-bold text-blue-700">
+                        ${request.serviceFeeAmount}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!request.email) {
+                        toast.error("Email not found. Please contact support.");
+                        return;
+                      }
+                      serviceFeePaymentMutation.mutate({
+                        amount: request.serviceFeeAmount * 100, // Convert to cents
+                        email: request.email,
+                      });
+                    }}
+                    disabled={serviceFeePaymentMutation.isPending}
+                    className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-bold transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {serviceFeePaymentMutation.isPending
+                      ? "Processing..."
+                      : `Pay $${request.serviceFeeAmount} with Stripe`}
+                  </button>
+                  {canEdit && (
+                    <p className="text-sm text-blue-600 mt-4">
+                      You can still edit your request details before payment.
+                    </p>
+                  )}
+                </div>
             ) : request.stage === "report_ready" ||
               request.stage === "final_report" ? (
               <div className="space-y-6">
@@ -940,6 +987,11 @@ export default function ManagedServiceDetailsPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Category
+                        {request.stage !== "payment_pending" && (
+                          <span className="ml-2 text-xs text-gray-500">
+                            (Cannot be changed after payment)
+                          </span>
+                        )}
                       </label>
                       <select
                         value={editFormData.category}
@@ -949,8 +1001,13 @@ export default function ManagedServiceDetailsPage() {
                             category: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        required
+                        disabled={request.stage !== "payment_pending"}
+                        className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                          request.stage !== "payment_pending"
+                            ? "bg-gray-100 cursor-not-allowed opacity-60"
+                            : ""
+                        }`}
+                        required={request.stage === "payment_pending"}
                       >
                         <option value="">Select category</option>
                         {categories.map((cat: Category) => (
@@ -959,6 +1016,11 @@ export default function ManagedServiceDetailsPage() {
                           </option>
                         ))}
                       </select>
+                      {request.stage !== "payment_pending" && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Category is locked after payment because it affects the service fee price.
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">

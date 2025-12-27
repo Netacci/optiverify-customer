@@ -46,6 +46,8 @@ export interface ManagedService {
   updatedAt: string;
   serviceFeeAmount?: number;
   serviceFeeStatus?: string;
+  serviceFeePaymentId?: string;
+  email?: string;
   savingsFeePercentage?: number;
   savingsFeeAmount?: number;
   savingsFeeStatus?: string;
@@ -107,6 +109,27 @@ export const syncManagedServicePayment = async (id: string) => {
     message: string;
     data: ManagedService;
   }>(`/api/managed-services/${id}/sync-payment`);
+  return response.data;
+};
+
+export const createServiceFeePaymentSession = async (
+  id: string,
+  amount: number,
+  email: string
+) => {
+  const response = await authenticatedRequest.post<{
+    success: boolean;
+    message: string;
+    data: {
+      sessionId: string;
+      url: string;
+      requestId: string;
+    };
+  }>(`/api/managed-services/payment/create-session`, {
+    requestId: id,
+    amount,
+    email,
+  });
   return response.data;
 };
 
