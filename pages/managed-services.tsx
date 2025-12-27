@@ -1,19 +1,63 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getManagedServices, ManagedService } from "@/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getManagedServices, deleteManagedService, ManagedService } from "@/api";
 import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 import Pagination from "@/components/Pagination";
 import Head from "next/head";
+import toast from "react-hot-toast";
+import { AxiosError } from "axios";
 
 export default function ManagedServicesListPage() {
   const [page, setPage] = useState(1);
   const limit = 20;
+  const queryClient = useQueryClient();
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    id: string | null;
+    category: string;
+  }>({ show: false, id: null, category: "" });
 
   const { data: servicesData, isLoading, error } = useQuery({
     queryKey: ["managedServices", page],
     queryFn: () => getManagedServices({ page, limit }),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteManagedService(id),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message || "Request deleted successfully");
+        queryClient.invalidateQueries({
+          queryKey: ["managedServices"],
+        });
+      } else {
+        toast.error(data.message || "Failed to delete request");
+      }
+    },
+    onError: (error: unknown) => {
+      const err = error as AxiosError<{ message: string }>;
+      toast.error(err?.response?.data?.message || "Failed to delete request");
+    },
+  });
+
+  const handleDeleteClick = (id: string, category: string) => {
+    setDeleteConfirm({ show: true, id, category });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirm.id) {
+      deleteMutation.mutate(deleteConfirm.id, {
+        onSuccess: () => {
+          setDeleteConfirm({ show: false, id: null, category: "" });
+        },
+      });
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ show: false, id: null, category: "" });
+  };
 
   // Handle response structure: backend returns { success: true, data: { requests: [], pagination: ... } } OR { success: true, data: [...] }
   // We need to support both for now until backend is confirmed
@@ -209,12 +253,41 @@ export default function ManagedServicesListPage() {
                           {new Date(request.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <Link
-                            href={`/managed-services/${request._id}`}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            View Details
-                          </Link>
+                          <div className="flex items-center justify-end gap-3 min-w-[140px]">
+                            <Link
+                              href={`/managed-services/${request._id}`}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              View Details
+                            </Link>
+                            {request.stage === "payment_pending" ? (
+                              <button
+                                onClick={() =>
+                                  handleDeleteClick(request._id, request.category)
+                                }
+                                disabled={deleteMutation.isPending && deleteConfirm.id === request._id}
+                                className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                title="Delete request"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                                Delete
+                              </button>
+                            ) : (
+                              <span className="w-[60px]"></span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -228,6 +301,62 @@ export default function ManagedServicesListPage() {
                 totalItems={pagination.total}
                 limit={limit}
               />
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {deleteConfirm.show && (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+                <div className="p-6">
+                  <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                    <svg
+                      className="w-6 h-6 text-red-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+                    Delete Request?
+                  </h3>
+                  <p className="text-sm text-gray-600 text-center mb-6">
+                    Are you sure you want to delete the request for{" "}
+                    <strong>"{deleteConfirm.category}"</strong>? This action
+                    cannot be undone.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleDeleteCancel}
+                      disabled={deleteMutation.isPending}
+                      className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteConfirm}
+                      disabled={deleteMutation.isPending}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {deleteMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          Deleting...
+                        </>
+                      ) : (
+                        "Delete"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
