@@ -145,3 +145,11 @@ export const createSavingsFeePaymentSession = async (id: string) => {
   }>(`/api/managed-services/${id}/savings-fee/payment`);
   return response.data;
 };
+
+export const deleteManagedService = async (id: string) => {
+  const response = await authenticatedRequest.delete<{
+    success: boolean;
+    message: string;
+  }>(`/api/managed-services/${id}`);
+  return response.data;
+};
