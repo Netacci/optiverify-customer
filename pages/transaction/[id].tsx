@@ -397,7 +397,7 @@ export default function TransactionDetailsPage() {
                     Final Report - Supplier Details
                   </h3>
                   <div className="space-y-8">
-                    {transaction.service.finalReport.supplierDetails.map(
+                    {transaction.service?.finalReport?.supplierDetails?.map(
                       (supplier: any, idx: number) => (
                         <div
                           key={idx}
