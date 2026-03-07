@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
 import Head from "next/head";
+import Cookies from "js-cookie";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -12,6 +13,7 @@ export default function ManagedServicePaymentPage() {
   const [fee, setFee] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -35,29 +37,49 @@ export default function ManagedServicePaymentPage() {
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       toast.error("Please enter a valid email address");
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       toast.loading("Processing payment...", { id: "payment" });
 
-      // Call backend to create Stripe checkout session
+      const token = Cookies.get("cd-token");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      // If logged in, get current user id so backend can set metadata (receipt vs verify email)
+      let userId: string | undefined;
+      if (token) {
+        try {
+          const meRes = await fetch(`${API_URL}/api/auth/me`, {
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const meData = await meRes.json();
+          if (meData?.data?.user?.id) userId = meData.data.user.id;
+        } catch {
+          // ignore
+        }
+      }
+
       const response = await fetch(
         `${API_URL}/api/managed-services/payment/create-session`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           credentials: "include",
           body: JSON.stringify({
             requestId,
-            amount: parseFloat(fee) * 100, // Convert to cents
+            amount: parseFloat(fee) * 100,
             email: email.trim(),
+            ...(userId && { userId }),
           }),
         }
       );
@@ -70,7 +92,6 @@ export default function ManagedServicePaymentPage() {
 
       if (data.success && data.data?.url) {
         toast.success("Redirecting to payment...", { id: "payment" });
-        // Redirect to Stripe checkout
         window.location.href = data.data.url;
       } else {
         throw new Error("No payment URL received");
@@ -82,6 +103,7 @@ export default function ManagedServicePaymentPage() {
       toast.error(err.message || "Failed to process payment", {
         id: "payment",
       });
+      setIsSubmitting(false);
     }
   };
 
@@ -148,9 +170,17 @@ export default function ManagedServicePaymentPage() {
           <div className="space-y-4">
             <button
               onClick={handlePayment}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              disabled={isSubmitting}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Pay ${fee} with Stripe
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                  Processing...
+                </>
+              ) : (
+                `Pay $${fee} with Stripe`
+              )}
             </button>
             <button
               onClick={() => router.back()}

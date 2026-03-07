@@ -9,6 +9,7 @@ import {
   updateManagedService,
   deleteManagedService,
   getCategories,
+  getCurrentUser,
   Category,
 } from "@/api";
 import toast from "react-hot-toast";
@@ -16,6 +17,15 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 import { AxiosError } from "axios";
 import Head from "next/head";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+interface UploadedDocument {
+  name?: string;
+  fileName: string;
+  type: string;
+  url: string;
+}
 
 const STAGES = [
   { id: "review", label: "Project Review" },
@@ -33,6 +43,9 @@ export default function ManagedServiceDetailsPage() {
   const paymentStatus = payment as string;
   const queryClient = useQueryClient();
 
+  // Track when we're processing a just-completed payment (show loader until sync finishes)
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState({
@@ -46,6 +59,15 @@ export default function ManagedServiceDetailsPage() {
 
   // Delete Confirmation State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Preview Modal State
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    doc: UploadedDocument | null;
+  }>({
+    isOpen: false,
+    doc: null,
+  });
 
   // Poll every 30 seconds for updates
   const {
@@ -65,11 +87,18 @@ export default function ManagedServiceDetailsPage() {
     enabled: isEditing,
   });
 
+  const { data: userData } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: () => getCurrentUser(),
+  });
+
   const categories = categoriesData?.data || [];
+  const currentUser = userData?.data?.user;
 
   const syncPaymentMutation = useMutation({
     mutationFn: () => syncManagedServicePayment(serviceId),
     onSuccess: (data) => {
+      setIsProcessingPayment(false);
       if (data.success) {
         toast.success(data.message || "Payment status synced successfully");
         refetch();
@@ -78,6 +107,7 @@ export default function ManagedServiceDetailsPage() {
       }
     },
     onError: (error: unknown) => {
+      setIsProcessingPayment(false);
       const errorMessage =
         (error as { response?: { data?: { message?: string } } })?.response
           ?.data?.message || "Failed to sync payment status";
@@ -87,7 +117,12 @@ export default function ManagedServiceDetailsPage() {
 
   const serviceFeePaymentMutation = useMutation({
     mutationFn: (data: { amount: number; email: string }) =>
-      createServiceFeePaymentSession(serviceId, data.amount, data.email),
+      createServiceFeePaymentSession(
+        serviceId,
+        data.amount,
+        data.email,
+        currentUser?.id
+      ),
     onSuccess: (data) => {
       if (data.success && data.data?.url) {
         toast.success("Redirecting to payment...");
@@ -173,18 +208,43 @@ export default function ManagedServiceDetailsPage() {
     setShowDeleteConfirm(false);
   };
 
-  // Refetch immediately if returning from successful payment
+  // Document helpers
+  const openDocument = (doc: UploadedDocument): void => {
+    setPreviewModal({ isOpen: true, doc });
+  };
+
+  const downloadDocument = async (doc: UploadedDocument): Promise<void> => {
+    try {
+      const fullUrl = getFullImageUrl(doc.url);
+      const response = await fetch(fullUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error("Failed to download file");
+    }
+  };
+
+  const getFullImageUrl = (url: string): string => {
+    if (url.startsWith("http")) return url;
+    return `${BASE_URL}${url}`;
+  };
+
+  // Show loader and sync when returning from a successful Stripe payment
   useEffect(() => {
     if (paymentStatus === "success" && router.isReady) {
-      // Wait a moment for webhook to process, then sync and refetch
+      setIsProcessingPayment(true);
+      // Remove the query param immediately so a refresh doesn't re-trigger this
+      router.replace(`/managed-services/${serviceId}`, undefined, { shallow: true });
+      // Give the webhook a couple of seconds to process, then sync
       setTimeout(() => {
         syncPaymentMutation.mutate();
         refetch();
-        toast.success("Payment successful! Processing request...");
-        // Remove query param from URL
-        router.replace(`/managed-services/${serviceId}`, undefined, {
-          shallow: true,
-        });
       }, 2000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,6 +275,56 @@ export default function ManagedServiceDetailsPage() {
   };
 
   const currentStep = getCurrentStepIndex();
+
+  if (isProcessingPayment || syncPaymentMutation.isPending) {
+    return (
+      <>
+        <Head>
+          <title>Processing Payment - Optiverifi</title>
+        </Head>
+        <DashboardLayout>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Processing your payment
+              </h2>
+              <p className="text-gray-500 text-sm">
+                Please wait while we confirm your payment and update your request…
+              </p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </>
+    );
+  }
+
+  if (isProcessingPayment || syncPaymentMutation.isPending) {
+    return (
+      <>
+        <Head>
+          <title>Processing Payment - Optiverifi</title>
+        </Head>
+        <DashboardLayout>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Processing your payment
+              </h2>
+              <p className="text-gray-500 text-sm">
+                Please wait while we confirm your payment and update your request…
+              </p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </>
+    );
+  }
 
   if (isLoading || !router.isReady) {
     return (
@@ -572,6 +682,100 @@ export default function ManagedServiceDetailsPage() {
                     )
                   ) : request.finalReport ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                      {/* Request Details Section */}
+                      <div className="mb-8 pb-8 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          Request Details
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                              Item Name
+                            </p>
+                            <p className="text-sm text-gray-900 font-medium">
+                              {request.itemName}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                              Date Created
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {new Date(request.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                              Service Fee (Paid)
+                            </p>
+                            <p className="text-sm text-gray-900 font-medium">
+                              ${request.serviceFeeAmount || 0}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                              Quantity
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {request.quantity}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                              Urgency
+                            </p>
+                            <p className="text-sm text-gray-900 capitalize">
+                              {request.urgency}
+                            </p>
+                          </div>
+                          {request.urgencyDuration && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                Urgency Duration
+                              </p>
+                              <p className="text-sm text-gray-900">
+                                {request.urgencyDuration}
+                              </p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                              Compliance Level
+                            </p>
+                            <p className="text-sm text-gray-900 capitalize">
+                              {request.complianceLevel}
+                            </p>
+                          </div>
+                          {request.daysLeft !== undefined && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                Days Left
+                              </p>
+                              <p
+                                className={`text-sm font-medium ${
+                                  request.isOverdue
+                                    ? "text-red-600"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {request.isOverdue ? "Overdue" : `${request.daysLeft} days`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {request.description && (
+                          <div className="mt-6">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                              Description
+                            </p>
+                            <p className="text-sm text-gray-700 leading-relaxed">
+                              {request.description}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Final Report Section */}
                       <div className="mb-6">
                         <h2 className="text-2xl font-bold text-gray-900 mb-2">
                           Final Sourcing Report
@@ -586,19 +790,17 @@ export default function ManagedServiceDetailsPage() {
                         )}
                       </div>
 
-                      {/* Summary - Only show if report is not fully unlocked (savings fee not paid) */}
-                      {request.finalReport.summary &&
-                        request.savingsFeeStatus !== "paid" &&
-                        (request.savingsAmount || 0) > 0 && (
-                          <div className="mb-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                              Summary
-                            </h3>
-                            <p className="text-gray-700 leading-relaxed">
-                              {request.finalReport.summary}
-                            </p>
-                          </div>
-                        )}
+                      {/* Summary */}
+                      {request.finalReport.summary && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            Summary
+                          </h3>
+                          <p className="text-gray-700 leading-relaxed">
+                            {request.finalReport.summary}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Recommendations */}
                       {request.finalReport.recommendations && (
@@ -634,9 +836,7 @@ export default function ManagedServiceDetailsPage() {
                                     minimumOrderQuantity?: string;
                                     notes?: string;
                                     isRecommended?: boolean;
-                                    images?: string[];
-                                    documents?: string[];
-                                    quoteDocument?: string;
+                                    uploadedDocuments?: UploadedDocument[];
                                   },
                                   index: number
                                 ) => (
@@ -765,34 +965,6 @@ export default function ManagedServiceDetailsPage() {
                                         )}
                                       </div>
                                     </div>
-                                    {supplier.quoteDocument && (
-                                      <div className="mt-4 pt-4 border-t border-gray-200">
-                                        <p className="text-sm font-medium text-gray-700 mb-2">
-                                          Quote Document:
-                                        </p>
-                                        <a
-                                          href={supplier.quoteDocument}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
-                                        >
-                                          <svg
-                                            className="w-4 h-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              strokeWidth={2}
-                                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                            />
-                                          </svg>
-                                          View Quote Document
-                                        </a>
-                                      </div>
-                                    )}
                                     {supplier.notes && (
                                       <div className="mt-4 pt-4 border-t border-gray-200">
                                         <p className="text-sm text-gray-700">
@@ -800,65 +972,86 @@ export default function ManagedServiceDetailsPage() {
                                         </p>
                                       </div>
                                     )}
-                                    {(supplier.images &&
-                                      supplier.images.length > 0) ||
-                                    (supplier.documents &&
-                                      supplier.documents.length > 0) ? (
-                                      <div className="mt-4 pt-4 border-t border-gray-200">
-                                        {supplier.images &&
-                                          supplier.images.length > 0 && (
-                                            <div className="mb-3">
-                                              <p className="text-sm font-medium text-gray-700 mb-2">
-                                                Images:
-                                              </p>
-                                              <div className="flex flex-wrap gap-2">
-                                                {supplier.images.map(
-                                                  (
-                                                    url: string,
-                                                    imgIndex: number
-                                                  ) => (
-                                                    <a
-                                                      key={imgIndex}
-                                                      href={url}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="text-sm text-blue-600 hover:underline"
+                                    {supplier.uploadedDocuments &&
+                                      supplier.uploadedDocuments.length > 0 && (
+                                        <div className="mt-4 pt-4 border-t border-gray-200">
+                                          <p className="text-sm font-medium text-gray-700 mb-3">
+                                            Uploaded Documents
+                                          </p>
+                                          <div className="space-y-2">
+                                            {supplier.uploadedDocuments.map(
+                                              (doc: UploadedDocument, docIndex: number) => (
+                                                <div
+                                                  key={docIndex}
+                                                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                                >
+                                                  <div className="flex-shrink-0">
+                                                    {doc.type === "application/pdf" ? (
+                                                      <svg
+                                                        className="w-6 h-6 text-red-500"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                      >
+                                                        <path
+                                                          strokeLinecap="round"
+                                                          strokeLinejoin="round"
+                                                          strokeWidth={2}
+                                                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                                        />
+                                                      </svg>
+                                                    ) : (
+                                                      <svg
+                                                        className="w-6 h-6 text-blue-500"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                      >
+                                                        <path
+                                                          strokeLinecap="round"
+                                                          strokeLinejoin="round"
+                                                          strokeWidth={2}
+                                                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                      </svg>
+                                                    )}
+                                                  </div>
+
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                                      {doc.name || doc.fileName}
+                                                    </p>
+                                                    {doc.name && (
+                                                      <p className="text-xs text-gray-500 truncate">
+                                                        {doc.fileName}
+                                                      </p>
+                                                    )}
+                                                  </div>
+
+                                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <button
+                                                      onClick={() =>
+                                                        openDocument(doc)
+                                                      }
+                                                      className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50 transition-colors"
                                                     >
-                                                      Image {imgIndex + 1}
-                                                    </a>
-                                                  )
-                                                )}
-                                              </div>
-                                            </div>
-                                          )}
-                                        {supplier.documents &&
-                                          supplier.documents.length > 0 && (
-                                            <div>
-                                              <p className="text-sm font-medium text-gray-700 mb-2">
-                                                Documents:
-                                              </p>
-                                              <div className="flex flex-wrap gap-2">
-                                                {supplier.documents.map(
-                                                  (
-                                                    url: string,
-                                                    docIndex: number
-                                                  ) => (
-                                                    <a
-                                                      key={docIndex}
-                                                      href={url}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="text-sm text-blue-600 hover:underline"
+                                                      Preview
+                                                    </button>
+                                                    <button
+                                                      onClick={() =>
+                                                        downloadDocument(doc)
+                                                      }
+                                                      className="text-xs text-gray-600 hover:text-gray-800 font-medium px-2 py-1 rounded hover:bg-gray-100 transition-colors"
                                                     >
-                                                      Document {docIndex + 1}
-                                                    </a>
-                                                  )
-                                                )}
-                                              </div>
-                                            </div>
-                                          )}
-                                      </div>
-                                    ) : null}
+                                                      Download
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              )
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
                                   </div>
                                 )
                               )}
@@ -960,6 +1153,14 @@ export default function ManagedServiceDetailsPage() {
                       Request Details
                     </h3>
                     <dl className="space-y-4">
+                    <div>
+                        <dt className="text-sm text-gray-500">
+                          Item Name
+                        </dt>
+                        <dd className="text-sm font-medium text-gray-900 mt-1">
+                          {request.itemName}
+                        </dd>
+                      </div>
                       <div>
                         <dt className="text-sm text-gray-500">
                           Specifications
@@ -1290,6 +1491,75 @@ export default function ManagedServiceDetailsPage() {
                       )}
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Document Preview Modal */}
+          {previewModal.isOpen && previewModal.doc && (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {previewModal.doc.name || previewModal.doc.fileName}
+                    </h3>
+                    {previewModal.doc.name && (
+                      <p className="text-sm text-gray-600">
+                        {previewModal.doc.fileName}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setPreviewModal({ isOpen: false, doc: null })}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-6">
+                  {previewModal.doc.type === "application/pdf" ? (
+                    <iframe
+                      src={getFullImageUrl(previewModal.doc.url)}
+                      className="w-full h-[500px] border border-gray-200 rounded-lg"
+                      title="PDF Preview"
+                    />
+                  ) : previewModal.doc.type.startsWith("image/") ? (
+                    <div className="flex justify-center">
+                      <img
+                        src={getFullImageUrl(previewModal.doc.url)}
+                        alt={previewModal.doc.fileName}
+                        className="max-w-full max-h-[500px] rounded-lg border border-gray-200"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-600 mb-4">
+                        Preview not available for this file type
+                      </p>
+                      <button
+                        onClick={() =>
+                          downloadDocument(previewModal.doc!)
+                        }
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        Download Instead
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

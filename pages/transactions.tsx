@@ -87,13 +87,7 @@ export default function TransactionsPage() {
   };
 
   const getReceiptLink = (transaction: Receipt) => {
-    if (transaction.type === "match_report") {
-      return `/receipts/payment/${transaction.id}`;
-    }
-    if (transaction.type === "managed_service_savings_fee") {
-      return `/receipts/managed-service/${transaction.service?.id}/savings-fee`;
-    }
-    return `/receipts/managed-service/${transaction.service?.id}`;
+    return `/transaction/${transaction.id}`;
   };
 
   return (

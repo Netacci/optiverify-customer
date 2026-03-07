@@ -348,15 +348,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               {sidebarItems.map((item) => {
                 // Check if current path matches (including sub-routes for requests)
                 const isActive =
-                  pathname === item.href ||
-                  (item.href === "/requests" &&
-                    pathname.startsWith("/requests")) ||
-                  (item.href === "/managed-services" &&
-                    pathname.startsWith("/managed-services")) ||
-                  (item.href === "/transactions" &&
-                    pathname.startsWith("/transactions")) ||
-                  (item.href === "/feedback" &&
-                    pathname.startsWith("/feedback"));
+                  pathname &&
+                  (pathname === item.href ||
+                    (item.href === "/requests" &&
+                      pathname.startsWith("/requests")) ||
+                    (item.href === "/managed-services" &&
+                      pathname.startsWith("/managed-services")) ||
+                    (item.href === "/transactions" &&
+                      pathname.startsWith("/transactions")) ||
+                    (item.href === "/feedback" &&
+                      pathname.startsWith("/feedback")));
 
                 // Show badge for feedback if there are unread admin replies
                 const showBadge =

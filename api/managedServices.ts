@@ -1,6 +1,13 @@
 // Managed Services
 import { authenticatedRequest } from "@/lib/requestMethod";
 
+export interface UploadedDocument {
+  name?: string;
+  fileName: string;
+  type: string;
+  url: string;
+}
+
 export interface ManagedServiceRequestData {
   itemName: string;
   category: string;
@@ -30,7 +37,10 @@ export const initiateManagedService = async (
 export interface ManagedService {
   _id: string;
   id?: string; // Sometimes returned as id or _id
+  itemName: string;
   category: string;
+  description: string;
+  complianceLevel: "commercial" | "government" | "regulated";
   specifications: string;
   quantity: string;
   deliveryLocation: string;
@@ -115,7 +125,8 @@ export const syncManagedServicePayment = async (id: string) => {
 export const createServiceFeePaymentSession = async (
   id: string,
   amount: number,
-  email: string
+  email: string,
+  userId?: string
 ) => {
   const response = await authenticatedRequest.post<{
     success: boolean;
@@ -129,6 +140,7 @@ export const createServiceFeePaymentSession = async (
     requestId: id,
     amount,
     email,
+    ...(userId && { userId }),
   });
   return response.data;
 };

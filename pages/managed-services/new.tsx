@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import DatePicker from "@/components/DatePicker";
 import {
   initiateManagedService,
   getCategories,
@@ -480,14 +481,13 @@ export default function NewManagedServicePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Internal Deadline <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date"
-                  name="internalDeadline"
+                <DatePicker
                   value={formData.internalDeadline}
-                  onChange={handleChange}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                  required
+                  onChange={(date) =>
+                    setFormData({ ...formData, internalDeadline: date })
+                  }
+                  minDate={new Date().toISOString().split("T")[0]}
+                  placeholder="Select deadline date"
                 />
               </div>
 
