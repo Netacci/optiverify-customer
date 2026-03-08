@@ -661,8 +661,8 @@ export default function RequestDetailsPage() {
                       </svg>
                       <span>
                         {request?.category}
-                        {(request?.subCategory ?? request?.subcategory) && (
-                          <> &rsaquo; {request.subCategory ?? request.subcategory}</>
+                        {(request?.subCategory) && (
+                          <> &rsaquo; {request.subCategory}</>
                         )}
                       </span>
                     </div>
