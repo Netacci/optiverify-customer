@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import pdfMake from "pdfmake/build/pdfmake";
 
 // Dynamically import fonts to avoid SSR issues in Next.js
@@ -63,8 +66,10 @@ interface Supplier {
   capabilities?: string[];
   diversityType?: string;
   industry?: string;
+  riskFlags?: string;
   businessVerification?: string;
   verified?: boolean;
+  lastVerifiedDate?: string;
   dataSource?: string;
   internalNotes?: string;
   buyerMatchRecommendation?: string;
