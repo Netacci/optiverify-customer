@@ -8,16 +8,30 @@ import {
   getSubscriptionStatus,
   getCurrentUser,
   getCategories,
+  getSubcategories,
 } from "@/api";
 import DashboardLayout from "@/components/DashboardLayout";
 import axios from "axios";
 import Head from "next/head";
+
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia",
+  "Washington", "West Virginia", "Wisconsin", "Wyoming",
+];
 
 export default function SubmitRequestPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     category: "",
+    subcategory: "",
     unitPrice: "",
     quantity: "",
     description: "",
@@ -64,6 +78,18 @@ export default function SubmitRequestPage() {
   const user = userData?.data?.user;
   const categories = categoriesData?.data || [];
 
+  const selectedCategoryObj = categories.find(
+    (c) => c.name === formData.category
+  );
+
+  const { data: subcategoriesData } = useQuery({
+    queryKey: ["subcategories", selectedCategoryObj?._id],
+    queryFn: () => getSubcategories(selectedCategoryObj!._id),
+    enabled: !!selectedCategoryObj?._id,
+  });
+
+  const subcategories = subcategoriesData?.data || [];
+
   const createMutation = useMutation({
     mutationFn: createRequest,
   });
@@ -77,10 +103,12 @@ export default function SubmitRequestPage() {
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "category" ? { subcategory: "" } : {}),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -259,6 +287,34 @@ export default function SubmitRequestPage() {
                   </select>
                 </div>
 
+                {subcategories.length > 0 && (
+                  <div>
+                    <label
+                      htmlFor="subcategory"
+                      className="block text-sm font-semibold text-gray-900 mb-2"
+                    >
+                      Subcategory
+                      <span className="ml-2 text-xs font-normal text-gray-500">
+                        (Optional)
+                      </span>
+                    </label>
+                    <select
+                      id="subcategory"
+                      name="subcategory"
+                      value={formData.subcategory}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                    >
+                      <option value="">Select subcategory</option>
+                      {subcategories.map((sub) => (
+                        <option key={sub._id} value={sub.name}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div>
                   <label
                     htmlFor="unitPrice"
@@ -337,25 +393,39 @@ export default function SubmitRequestPage() {
                   />
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="location"
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                  >
-                    Location
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Preferred Location
                     <span className="ml-2 text-xs font-normal text-gray-500">
                       (Optional)
                     </span>
                   </label>
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                    placeholder="e.g., United States"
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Country</label>
+                      <input
+                        type="text"
+                        value="United States"
+                        disabled
+                        className="w-full px-4 py-3 border border-gray-300 rounded-[8px] bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">State</label>
+                      <select
+                        id="location"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                      >
+                        <option value="">Select state</option>
+                        {US_STATES.map((state) => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 

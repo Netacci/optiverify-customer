@@ -4,6 +4,7 @@ import { authenticatedRequest } from "@/lib/requestMethod";
 export interface CreateRequestData {
   name: string;
   category: string;
+  subcategory?: string;
   unitPrice: string | number;
   quantity?: string;
   description?: string;

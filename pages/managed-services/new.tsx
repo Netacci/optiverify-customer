@@ -7,6 +7,7 @@ import DatePicker from "@/components/DatePicker";
 import {
   initiateManagedService,
   getCategories,
+  getSubcategories,
   getRequestDetails,
   getCurrentUser,
   getSystemSettings,
@@ -16,6 +17,18 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import type { Category } from "@/api";
 import Head from "next/head";
+
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia",
+  "Washington", "West Virginia", "Wisconsin", "Wyoming",
+];
 
 // Pricing calculation function (matches backend logic)
 const calculatePrice = (
@@ -75,6 +88,7 @@ export default function NewManagedServicePage() {
   const [formData, setFormData] = useState({
     itemName: "",
     category: "",
+    subcategory: "",
     quantity: "",
     description: "",
     estimatedSpendRange: "",
@@ -130,6 +144,19 @@ export default function NewManagedServicePage() {
   });
 
   const categories = categoriesData?.data || [];
+
+  const selectedCategoryObj = categories.find(
+    (cat: Category) => cat.name === formData.category
+  );
+
+  const { data: subcategoriesData } = useQuery({
+    queryKey: ["subcategories", selectedCategoryObj?._id],
+    queryFn: () => getSubcategories(selectedCategoryObj!._id),
+    enabled: !!selectedCategoryObj?._id,
+  });
+
+  const subcategories = subcategoriesData?.data || [];
+
   const settings = useMemo<SystemSettings>(
     () => settingsData?.data || ({} as SystemSettings),
     [settingsData?.data]
@@ -196,7 +223,11 @@ export default function NewManagedServicePage() {
     >
   ) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "category" ? { subcategory: "" } : {}),
+    }));
   };
 
   const handleNext = () => {
@@ -346,6 +377,30 @@ export default function NewManagedServicePage() {
                   </select>
                 </div>
 
+                {subcategories.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subcategory
+                      <span className="ml-2 text-xs font-normal text-gray-500">
+                        (Optional)
+                      </span>
+                    </label>
+                    <select
+                      name="subcategory"
+                      value={formData.subcategory}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                    >
+                      <option value="">Select subcategory</option>
+                      {subcategories.map((sub) => (
+                        <option key={sub._id} value={sub.name}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Quantity <span className="text-red-500">*</span>
@@ -465,15 +520,32 @@ export default function NewManagedServicePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Delivery Location <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="deliveryLocation"
-                  value={formData.deliveryLocation}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="City, Country"
-                  required
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Country</label>
+                    <input
+                      type="text"
+                      value="United States"
+                      disabled
+                      className="w-full px-4 py-3 border border-gray-300 rounded-[8px] bg-gray-50 text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">State</label>
+                    <select
+                      name="deliveryLocation"
+                      value={formData.deliveryLocation}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                    >
+                      <option value="">Select state</option>
+                      {US_STATES.map((state) => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* Internal Deadline */}

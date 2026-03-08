@@ -11,6 +11,7 @@ export interface UploadedDocument {
 export interface ManagedServiceRequestData {
   itemName: string;
   category: string;
+  subcategory?: string;
   quantity: string;
   description: string;
   estimatedSpendRange: string;
