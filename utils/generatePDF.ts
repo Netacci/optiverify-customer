@@ -44,9 +44,13 @@ async function loadFonts() {
 interface Supplier {
   name: string;
   location: string;
+  stateRegion?: string;
+  city?: string;
+  country?: string;
   email: string;
   phone?: string;
   website?: string;
+  contactName?: string;
   description?: string;
   matchScore?: number;
   ranking?: number;
@@ -54,11 +58,22 @@ interface Supplier {
   strengths?: string[];
   leadTime?: string;
   minOrderQuantity?: string;
+  annualCapacity?: string;
+  certifications?: string[];
+  capabilities?: string[];
+  diversityType?: string;
+  industry?: string;
+  businessVerification?: string;
+  verified?: boolean;
+  dataSource?: string;
+  internalNotes?: string;
+  buyerMatchRecommendation?: string;
 }
 
 interface RequestDetails {
   name?: string;
   category?: string;
+  subcategory?: string;
   description?: string;
   quantity?: number;
   unitPrice?: number;
@@ -137,7 +152,9 @@ export async function generateMatchReportPDF(
               request.category && {
                 text: [
                   { text: "Category: ", bold: true },
-                  request.category,
+                  request.subcategory
+                    ? `${request.category} > ${request.subcategory}`
+                    : request.category,
                 ],
                 margin: [0, 0, 0, 6],
               },
@@ -270,37 +287,26 @@ export async function generateMatchReportPDF(
             style: "supplierName",
             margin: [0, 0, 0, 8],
           },
+          // Contact & Location
           {
             columns: [
               {
                 width: "*",
                 stack: [
-                  {
-                    text: [
-                      { text: "Location: ", bold: true },
-                      supplier.location,
-                    ],
+                  supplier.contactName && {
+                    text: [{ text: "Contact: ", bold: true }, supplier.contactName],
                     margin: [0, 0, 0, 4],
                   },
                   {
-                    text: [
-                      { text: "Email: ", bold: true },
-                      supplier.email,
-                    ],
+                    text: [{ text: "Email: ", bold: true }, supplier.email],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.phone && {
-                    text: [
-                      { text: "Phone: ", bold: true },
-                      supplier.phone,
-                    ],
+                    text: [{ text: "Phone: ", bold: true }, supplier.phone],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.website && {
-                    text: [
-                      { text: "Website: ", bold: true },
-                      supplier.website,
-                    ],
+                    text: [{ text: "Website: ", bold: true }, supplier.website],
                     margin: [0, 0, 0, 4],
                   },
                 ].filter(Boolean),
@@ -308,71 +314,140 @@ export async function generateMatchReportPDF(
               {
                 width: "*",
                 stack: [
-                  supplier.matchScore && {
-                    text: [
-                      { text: "Match Score: ", bold: true },
-                      `${supplier.matchScore}%`,
-                    ],
+                  supplier.matchScore !== undefined && {
+                    text: [{ text: "Match Score: ", bold: true }, `${supplier.matchScore}%`],
                     margin: [0, 0, 0, 4],
                   },
+                  (supplier.stateRegion || supplier.location) && {
+                    text: [{ text: "State/Region: ", bold: true }, supplier.stateRegion || supplier.location],
+                    margin: [0, 0, 0, 4],
+                  },
+                  supplier.city && {
+                    text: [{ text: "City: ", bold: true }, supplier.city],
+                    margin: [0, 0, 0, 4],
+                  },
+                  supplier.country && {
+                    text: [{ text: "Country: ", bold: true }, supplier.country],
+                    margin: [0, 0, 0, 4],
+                  },
+                ].filter(Boolean),
+              },
+            ],
+            margin: [0, 0, 0, 6],
+          },
+          // Order & Capacity
+          {
+            columns: [
+              {
+                width: "*",
+                stack: [
                   supplier.leadTime && {
-                    text: [
-                      { text: "Lead Time: ", bold: true },
-                      supplier.leadTime,
-                    ],
+                    text: [{ text: "Lead Time: ", bold: true }, supplier.leadTime],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.minOrderQuantity && {
+                    text: [{ text: "Min Order Qty: ", bold: true }, supplier.minOrderQuantity],
+                    margin: [0, 0, 0, 4],
+                  },
+                  supplier.annualCapacity && {
+                    text: [{ text: "Annual Capacity: ", bold: true }, supplier.annualCapacity],
+                    margin: [0, 0, 0, 4],
+                  },
+                ].filter(Boolean),
+              },
+              {
+                width: "*",
+                stack: [
+                  supplier.industry && {
+                    text: [{ text: "Industry: ", bold: true }, supplier.industry],
+                    margin: [0, 0, 0, 4],
+                  },
+                  supplier.diversityType && {
+                    text: [{ text: "Diversity Type: ", bold: true }, supplier.diversityType],
+                    margin: [0, 0, 0, 4],
+                  },
+                  supplier.businessVerification && {
+                    text: [{ text: "Verification: ", bold: true }, supplier.businessVerification],
+                    margin: [0, 0, 0, 4],
+                  },
+                ].filter(Boolean),
+              },
+            ],
+            margin: [0, 0, 0, 6],
+          },
+          // Capabilities
+          supplier.capabilities && supplier.capabilities.length > 0 && {
+            text: [{ text: "Capabilities: ", bold: true }, supplier.capabilities.join(", ")],
+            margin: [0, 0, 0, 6],
+          },
+          // Certifications
+          supplier.certifications && supplier.certifications.length > 0 && {
+            text: [{ text: "Certifications: ", bold: true }, supplier.certifications.join(", ")],
+            margin: [0, 0, 0, 6],
+          },
+          // AI Analysis
+          supplier.aiExplanation && {
+            text: [{ text: "Match Analysis: ", bold: true }, supplier.aiExplanation],
+            margin: [0, 0, 0, 6],
+            italics: true,
+            color: "#4b5563",
+          },
+          // Risk & Verification
+          {
+            columns: [
+              {
+                width: "*",
+                stack: [
+                  supplier.riskFlags && {
+                    text: [{ text: "Risk Flags: ", bold: true }, supplier.riskFlags],
+                    margin: [0, 0, 0, 4],
+                    color: "#dc2626",
+                  },
+                  supplier.dataSource && {
+                    text: [{ text: "Data Source: ", bold: true }, supplier.dataSource],
+                    margin: [0, 0, 0, 4],
+                  },
+                ].filter(Boolean),
+              },
+              {
+                width: "*",
+                stack: [
+                  supplier.lastVerifiedDate && {
                     text: [
-                      { text: "Min Order Qty: ", bold: true },
-                      supplier.minOrderQuantity,
+                      { text: "Last Verified: ", bold: true },
+                      new Date(supplier.lastVerifiedDate).toLocaleDateString(),
                     ],
                     margin: [0, 0, 0, 4],
                   },
                 ].filter(Boolean),
               },
             ],
-            margin: [0, 0, 0, 8],
+            margin: [0, 0, 0, 6],
           },
-          supplier.description && {
-            text: [
-              { text: "Description: ", bold: true },
-              supplier.description,
-            ],
-            margin: [0, 0, 0, 8],
+          // Match Recommendation
+          supplier.buyerMatchRecommendation && {
+            text: [{ text: "Match Recommendation: ", bold: true }, supplier.buyerMatchRecommendation],
+            margin: [0, 0, 0, 6],
           },
-          supplier.strengths && supplier.strengths.length > 0 && {
-            text: [
-              { text: "Strengths: ", bold: true },
-              supplier.strengths.join(", "),
-            ],
-            margin: [0, 0, 0, 8],
-          },
-          supplier.aiExplanation && {
-            text: [
-              { text: "AI Analysis: ", bold: true },
-              supplier.aiExplanation,
-            ],
-            margin: [0, 0, 0, 8],
-            italics: true,
-            color: "#4b5563",
+          // Internal Notes
+          supplier.internalNotes && {
+            text: [{ text: "Notes: ", bold: true }, supplier.internalNotes],
+            margin: [0, 0, 0, 6],
+            color: "#6b7280",
           },
           {
             canvas: [
               {
                 type: "line",
-                x1: 0,
-                y1: 0,
-                x2: 515,
-                y2: 0,
+                x1: 0, y1: 0, x2: 515, y2: 0,
                 lineWidth: 0.5,
                 lineColor: "#e5e7eb",
               },
             ],
-            margin: [0, 12, 0, 12],
+            margin: [0, 10, 0, 10],
           },
         ].filter(Boolean),
-        margin: [0, 0, 0, 12],
+        margin: [0, 0, 0, 8],
       })),
       // Footer
       {

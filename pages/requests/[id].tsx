@@ -18,6 +18,214 @@ import { AxiosError } from "axios";
 import { generateMatchReportPDF } from "@/utils/generatePDF";
 import Head from "next/head";
 
+// ─── Supplier Detail Modal ───────────────────────────────────────────────────
+
+function SupplierDetailModal({
+  supplier,
+  onClose,
+}: {
+  supplier: Supplier;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-xl font-bold text-gray-900">{supplier.name}</h2>
+              {supplier.ranking && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                  Rank #{supplier.ranking}
+                </span>
+              )}
+              {supplier.verified && (
+                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                  Verified
+                </span>
+              )}
+            </div>
+            {supplier.supplierNumber && (
+              <p className="text-sm text-gray-500">{supplier.supplierNumber}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-900 ml-4 flex-shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Match Score + Why They Match */}
+          {supplier.matchScore !== undefined && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-gray-700">Match Score</span>
+                <span className="text-2xl font-bold text-blue-600">{supplier.matchScore}%</span>
+              </div>
+              {supplier.aiExplanation && (
+                <p className="text-sm text-gray-700 leading-relaxed">{supplier.aiExplanation}</p>
+              )}
+            </div>
+          )}
+
+          {/* Contact Information */}
+          <Section title="Contact Information">
+            <Grid2>
+              <Field label="Contact Name" value={supplier.contactName} />
+              <Field label="Email" value={supplier.email} href={`mailto:${supplier.email}`} />
+              <Field label="Phone" value={supplier.phone} href={`tel:${supplier.phone}`} />
+              <Field label="Website" value={supplier.website} href={supplier.website} external />
+            </Grid2>
+          </Section>
+
+          {/* Location */}
+          <Section title="Location">
+            <Grid2>
+              <Field label="State / Region" value={supplier.stateRegion} />
+              <Field label="City" value={supplier.city} />
+              <Field label="Country" value={supplier.country} />
+            </Grid2>
+          </Section>
+
+          {/* Category */}
+          <Section title="Category">
+            <Grid2>
+              <Field label="Category" value={supplier.category} />
+              <Field label="Subcategory" value={supplier.subCategory} />
+              <Field label="Industry" value={supplier.industry} />
+              <Field label="Diversity Type" value={supplier.diversityType} />
+            </Grid2>
+          </Section>
+
+          {/* Capabilities */}
+          {supplier.capabilities && supplier.capabilities.length > 0 && (
+            <Section title="Capabilities">
+              <div className="flex flex-wrap gap-2">
+                {supplier.capabilities.map((cap, i) => (
+                  <span key={i} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+                    {cap}
+                  </span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Certifications */}
+          {supplier.certifications && supplier.certifications.length > 0 && (
+            <Section title="Certifications">
+              <div className="flex flex-wrap gap-2">
+                {supplier.certifications.map((cert, i) => (
+                  <span key={i} className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-medium">
+                    {cert}
+                  </span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Order & Capacity */}
+          <Section title="Order & Capacity">
+            <Grid2>
+              <Field label="Min Order Quantity" value={supplier.minOrderQuantity} />
+              <Field label="Lead Time" value={supplier.leadTime} />
+              <Field label="Annual Capacity" value={supplier.annualCapacity} />
+            </Grid2>
+          </Section>
+
+          {/* Verification & Risk */}
+          <Section title="Verification & Risk">
+            <Grid2>
+              <Field label="Business Verification" value={supplier.businessVerification} />
+              <Field label="Risk Flags" value={supplier.riskFlags} />
+              <Field label="Data Source" value={supplier.dataSource} />
+              <Field
+                label="Last Verified"
+                value={
+                  supplier.lastVerifiedDate
+                    ? new Date(supplier.lastVerifiedDate).toLocaleDateString()
+                    : undefined
+                }
+              />
+            </Grid2>
+          </Section>
+
+          {/* Internal Notes */}
+          {supplier.internalNotes && (
+            <Section title="Internal Notes">
+              <p className="text-sm text-gray-700 leading-relaxed bg-yellow-50 border border-yellow-100 rounded-lg p-3">
+                {supplier.internalNotes}
+              </p>
+            </Section>
+          )}
+
+          {/* Buyer Match Recommendation */}
+          {supplier.buyerMatchRecommendation && (
+            <Section title="Match Recommendation">
+              <p className="text-sm text-gray-700 leading-relaxed">{supplier.buyerMatchRecommendation}</p>
+            </Section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function Grid2({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>;
+}
+
+function Field({
+  label,
+  value,
+  href,
+  external,
+}: {
+  label: string;
+  value?: string | null;
+  href?: string;
+  external?: boolean;
+}) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+      {href ? (
+        <a
+          href={href}
+          target={external ? "_blank" : undefined}
+          rel={external ? "noopener noreferrer" : undefined}
+          className="text-sm font-medium text-blue-600 hover:text-blue-700 break-all"
+        >
+          {value}
+        </a>
+      ) : (
+        <p className="text-sm font-medium text-gray-900 break-words">{value}</p>
+      )}
+    </div>
+  );
+}
+
 export default function RequestDetailsPage() {
   const router = useRouter();
   const { id, payment } = router.query;
@@ -55,6 +263,7 @@ export default function RequestDetailsPage() {
 
   // State to track if we are currently verifying payment to hide unlock button
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
   // Sync payment status if redirecting from successful payment
   useEffect(() => {
@@ -450,7 +659,12 @@ export default function RequestDetailsPage() {
                           d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
                         />
                       </svg>
-                      <span>{request?.category}</span>
+                      <span>
+                        {request?.category}
+                        {request?.subcategory && (
+                          <> &rsaquo; {request.subcategory}</>
+                        )}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <svg
@@ -730,180 +944,97 @@ export default function RequestDetailsPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-4">
-                {suppliers.map((supplier: Supplier, index: number) => (
-                  <div
-                    key={index}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-blue-600 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-xl font-bold text-gray-900">
-                            {supplier.name}
-                          </h3>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-                            Rank #{supplier.ranking}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-12">Rank</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Supplier Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Phone</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Website</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">State</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Score</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {suppliers.map((supplier: Supplier, index: number) => (
+                      <tr
+                        key={index}
+                        className="hover:bg-blue-50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedSupplier(supplier)}
+                      >
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                            {supplier.ranking ?? index + 1}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                          </svg>
-                          <span className="text-sm">{supplier.location}</span>
-                        </div>
-                      </div>
-                      <div className="ml-4 text-right">
-                        <div className="text-3xl font-bold text-blue-600 mb-1">
-                          {supplier.matchScore}%
-                        </div>
-                        <div className="text-xs text-gray-500 font-medium">
-                          Match Score
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-gray-200 pt-4 mb-4">
-                      <p className="text-gray-700 leading-relaxed">
-                        {supplier.description}
-                      </p>
-                    </div>
-
-                    {supplier.aiExplanation && (
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-4 border border-blue-100">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mt-0.5">
-                            <svg
-                              className="w-4 h-4 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                              />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900 mb-1">
-                              Why they match
-                            </p>
-                            <p className="text-sm text-gray-700 leading-relaxed">
-                              {supplier.aiExplanation}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {supplier.strengths && supplier.strengths.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold text-gray-900 mb-3">
-                          Key Strengths
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {supplier.strengths.map(
-                            (strength: string, idx: number) => (
-                              <span
-                                key={idx}
-                                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium"
-                              >
-                                {strength}
-                              </span>
-                            )
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="font-semibold text-gray-900">{supplier.name}</p>
+                          {supplier.verified && (
+                            <span className="inline-block mt-0.5 text-xs text-green-600 font-medium">Verified</span>
                           )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pt-4 border-t border-gray-200">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
-                          Email
-                        </p>
-                        <a
-                          href={`mailto:${supplier.email}`}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-700 break-all"
-                        >
-                          {supplier.email}
-                        </a>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
-                          Phone
-                        </p>
-                        <a
-                          href={`tel:${supplier.phone}`}
-                          className="text-sm font-medium text-gray-900"
-                        >
-                          {supplier.phone}
-                        </a>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
-                          Lead Time
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {supplier.leadTime}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
-                          Min Order
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {supplier.minOrderQuantity}
-                        </p>
-                      </div>
-                    </div>
-
-                    {supplier.website && (
-                      <div className="pt-4 border-t border-gray-200">
-                        <a
-                          href={supplier.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-semibold"
-                        >
-                          <span>Visit Website</span>
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                        </td>
+                        <td className="px-4 py-4 hidden md:table-cell">
+                          {supplier.phone ? (
+                            <a
+                              href={`tel:${supplier.phone}`}
+                              className="text-gray-700 hover:text-blue-600"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {supplier.phone}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 hidden lg:table-cell">
+                          {supplier.website ? (
+                            <a
+                              href={supplier.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-700 hover:underline truncate max-w-[180px] block"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {supplier.website.replace(/^https?:\/\//, "")}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 hidden sm:table-cell text-gray-600">
+                          {supplier.stateRegion || supplier.location || <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <span className="inline-block font-bold text-blue-600">
+                            {supplier.matchScore}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <button
+                            className="px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors whitespace-nowrap"
+                            onClick={(e) => { e.stopPropagation(); setSelectedSupplier(supplier); }}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                            />
-                          </svg>
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-xs text-gray-400 px-4 py-2 border-t border-gray-100">
+                  Click a row to view full supplier details
+                </p>
               </div>
+            )}
+
+            {/* Supplier Detail Modal */}
+            {selectedSupplier && (
+              <SupplierDetailModal
+                supplier={selectedSupplier}
+                onClose={() => setSelectedSupplier(null)}
+              />
             )}
           </div>
         </div>

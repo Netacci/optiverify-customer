@@ -16,6 +16,7 @@ export interface Request {
 
 export interface RequestDetails extends Request {
   name?: string;
+  subcategory?: string;
   quantity?: number;
   unitPrice?: number;
   totalAmount?: number;
@@ -50,19 +51,51 @@ export interface RequestsResponse {
 }
 
 export interface Supplier {
-  _id?: string;
+  // Identifiers
+  supplierNumber?: string;
+  // Basic
   name: string;
+  category?: string;
+  subCategory?: string;
+  // Location
+  country?: string;
+  stateRegion?: string;
+  city?: string;
   location: string;
+  // Contact
+  contactName?: string;
   email: string;
   phone?: string;
   website?: string;
+  // Certifications & Diversity
+  certifications?: string[];
+  diversityType?: string;
+  // Products & Services
+  capabilities?: string[];
   description?: string;
+  // Order & Capacity
+  minOrderQuantity?: string;
+  leadTime?: string;
+  annualCapacity?: string;
+  // Industry & Risk
+  industry?: string;
+  riskFlags?: string;
+  // Data Management
+  dataSource?: string;
+  // Verification
+  businessVerification?: string;
+  verified?: boolean;
+  lastVerifiedDate?: string;
+  // Internal
+  internalNotes?: string;
+  buyerMatchRecommendation?: string;
+  // Match data
   matchScore?: number;
   ranking?: number;
+  whyTheyMatch?: string;
   aiExplanation?: string;
   strengths?: string[];
-  leadTime?: string;
-  minOrderQuantity?: string;
+  concerns?: string[];
 }
 
 export interface RequestDetailsResponse {
