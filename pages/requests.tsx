@@ -144,7 +144,7 @@ export default function RequestsPage() {
                         Category
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Description
+                        Subcategory
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Status
@@ -174,10 +174,10 @@ export default function RequestsPage() {
                             {request.category}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <p className="text-sm text-gray-600 line-clamp-2 max-w-md">
-                            {request.description}
-                          </p>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-600">
+                            {request.subCategory ?? "—"}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span

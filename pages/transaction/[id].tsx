@@ -6,6 +6,7 @@ import Link from "next/link";
 import Head from "next/head";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { generateReceiptPDF } from "@/utils/generatePDF";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -21,6 +22,7 @@ export default function TransactionDetailsPage() {
     isOpen: false,
     doc: null,
   });
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["transaction", transactionId],
@@ -29,6 +31,28 @@ export default function TransactionDetailsPage() {
   });
 
   const transaction = data?.data;
+
+  const handleDownloadReceipt = async () => {
+    if (!transaction) return;
+    setDownloadingPDF(true);
+    try {
+      await generateReceiptPDF({
+        transactionId: transaction.id,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        paidAt: transaction.paidAt,
+        planType: transaction.planType,
+        type: transaction.type,
+        itemName: transaction.request?.name || transaction.service?.itemName,
+        category: transaction.request?.category || transaction.service?.category,
+        credits: transaction.credits,
+      });
+    } catch (err) {
+      toast.error("Failed to generate receipt PDF");
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -210,6 +234,16 @@ export default function TransactionDetailsPage() {
                 {getTitle(transaction)}
               </h1>
             </div>
+            <button
+              onClick={handleDownloadReceipt}
+              disabled={downloadingPDF}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-medium disabled:opacity-60"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {downloadingPDF ? "Generating..." : "Download Receipt"}
+            </button>
           </div>
 
           {/* Main Receipt Card */}

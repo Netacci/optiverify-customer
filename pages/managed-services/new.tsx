@@ -88,7 +88,7 @@ export default function NewManagedServicePage() {
   const [formData, setFormData] = useState({
     itemName: "",
     category: "",
-    subcategory: "",
+    subCategory: "",
     quantity: "",
     description: "",
     estimatedSpendRange: "",
@@ -226,7 +226,7 @@ export default function NewManagedServicePage() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === "category" ? { subcategory: "" } : {}),
+      ...(name === "category" ? { subCategory: "" } : {}),
     }));
   };
 
@@ -386,8 +386,8 @@ export default function NewManagedServicePage() {
                       </span>
                     </label>
                     <select
-                      name="subcategory"
-                      value={formData.subcategory}
+                      name="subCategory"
+                      value={formData.subCategory}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     >

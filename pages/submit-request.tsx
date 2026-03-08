@@ -31,7 +31,7 @@ export default function SubmitRequestPage() {
   const [formData, setFormData] = useState({
     name: "",
     category: "",
-    subcategory: "",
+    subCategory: "",
     unitPrice: "",
     quantity: "",
     description: "",
@@ -107,7 +107,7 @@ export default function SubmitRequestPage() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === "category" ? { subcategory: "" } : {}),
+      ...(name === "category" ? { subCategory: "" } : {}),
     }));
   };
 
@@ -290,7 +290,7 @@ export default function SubmitRequestPage() {
                 {subcategories.length > 0 && (
                   <div>
                     <label
-                      htmlFor="subcategory"
+                      htmlFor="subCategory"
                       className="block text-sm font-semibold text-gray-900 mb-2"
                     >
                       Subcategory
@@ -299,9 +299,9 @@ export default function SubmitRequestPage() {
                       </span>
                     </label>
                     <select
-                      id="subcategory"
-                      name="subcategory"
-                      value={formData.subcategory}
+                      id="subCategory"
+                      name="subCategory"
+                      value={formData.subCategory}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     >

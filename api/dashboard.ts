@@ -5,7 +5,8 @@ export interface Request {
   id: string;
   requestId?: string; // Backend sometimes returns requestId
   category: string;
-  description: string;
+  subCategory?: string;
+  description?: string;
   status: string;
   matchedCount?: number;
   matchScore?: number;
@@ -16,7 +17,7 @@ export interface Request {
 
 export interface RequestDetails extends Request {
   name?: string;
-  subcategory?: string;
+  subCategory?: string;
   quantity?: number;
   unitPrice?: number;
   totalAmount?: number;

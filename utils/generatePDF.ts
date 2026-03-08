@@ -73,7 +73,8 @@ interface Supplier {
 interface RequestDetails {
   name?: string;
   category?: string;
-  subcategory?: string;
+  subCategory?: string;
+  subcategory?: string; // legacy, prefer subCategory
   description?: string;
   quantity?: number;
   unitPrice?: number;
@@ -152,8 +153,8 @@ export async function generateMatchReportPDF(
               request.category && {
                 text: [
                   { text: "Category: ", bold: true },
-                  request.subcategory
-                    ? `${request.category} > ${request.subcategory}`
+                  (request.subCategory ?? request.subcategory)
+                    ? `${request.category} > ${request.subCategory ?? request.subcategory}`
                     : request.category,
                 ],
                 margin: [0, 0, 0, 6],
@@ -477,5 +478,176 @@ export async function generateMatchReportPDF(
   pdfMake.createPdf(docDefinition).download(
     `match-report-${request.name || "request"}-${new Date().toISOString().split("T")[0]}.pdf`
   );
+}
+
+interface ReceiptData {
+  transactionId: string;
+  amount: number;
+  currency?: string;
+  paidAt: string;
+  planType?: string;
+  itemName?: string;
+  category?: string;
+  credits?: number;
+  type?: string;
+}
+
+export async function generateReceiptPDF(receipt: ReceiptData) {
+  await loadFonts();
+
+  const formattedAmount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: (receipt.currency || "usd").toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(receipt.amount);
+
+  const formattedDate = new Date(receipt.paidAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const planLabels: Record<string, string> = {
+    "one-time": "One-Time Match",
+    starter_monthly: "Starter Plan (Monthly)",
+    starter_annual: "Starter Plan (Annual)",
+    professional_monthly: "Professional Plan (Monthly)",
+    professional_annual: "Professional Plan (Annual)",
+    extra_credit: "Credit Top-Up",
+    managed_service: "Managed Service",
+    managed_service_savings_fee: "Savings Fee",
+  };
+
+  const typeLabels: Record<string, string> = {
+    match_report: "Supplier Match Report",
+    managed_service: "Managed Service",
+    managed_service_savings_fee: "Managed Service Savings Fee",
+    top_up: "Credit Top-Up",
+  };
+
+  const rows: any[] = [
+    [
+      { text: "Transaction ID", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: receipt.transactionId, fontSize: 10, color: "#111827", font: "Roboto" },
+    ],
+    [
+      { text: "Payment Date", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: formattedDate, fontSize: 10, color: "#111827" },
+    ],
+    [
+      { text: "Amount Paid", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: formattedAmount, fontSize: 14, bold: true, color: "#111827" },
+    ],
+  ];
+
+  if (receipt.type) {
+    rows.push([
+      { text: "Payment Type", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: typeLabels[receipt.type] || receipt.type, fontSize: 10, color: "#111827" },
+    ]);
+  }
+
+  if (receipt.itemName) {
+    rows.push([
+      { text: "Item Searched", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: receipt.itemName, fontSize: 10, color: "#111827" },
+    ]);
+  }
+
+  if (receipt.category) {
+    rows.push([
+      { text: "Category", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: receipt.category, fontSize: 10, color: "#111827" },
+    ]);
+  }
+
+  if (receipt.planType) {
+    rows.push([
+      { text: "Plan", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: planLabels[receipt.planType] || receipt.planType, fontSize: 10, color: "#111827" },
+    ]);
+  }
+
+  if (receipt.credits) {
+    rows.push([
+      { text: "Credits", bold: true, fontSize: 10, color: "#6b7280" },
+      { text: `${receipt.credits} credit${receipt.credits > 1 ? "s" : ""}`, fontSize: 10, color: "#111827" },
+    ]);
+  }
+
+  const docDefinition: any = {
+    pageSize: "A4",
+    pageMargins: [50, 60, 50, 60],
+    defaultStyle: {
+      font: "Roboto",
+      fontSize: 10,
+      lineHeight: 1.5,
+    },
+    content: [
+      // Header
+      {
+        columns: [
+          {
+            stack: [
+              { text: "PAYMENT RECEIPT", fontSize: 22, bold: true, color: "#111827" },
+              { text: "Optiverifi", fontSize: 12, color: "#6b7280", margin: [0, 4, 0, 0] },
+            ],
+          },
+          {
+            stack: [
+              { text: "Payment made to", fontSize: 10, color: "#6b7280", alignment: "right" },
+              { text: "Optiverifi", fontSize: 14, bold: true, color: "#111827", alignment: "right", margin: [0, 2, 0, 0] },
+            ],
+            alignment: "right",
+          },
+        ],
+        margin: [0, 0, 0, 24],
+      },
+      // Divider
+      {
+        canvas: [{ type: "line", x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, lineColor: "#e5e7eb" }],
+        margin: [0, 0, 0, 24],
+      },
+      // Receipt details table
+      {
+        table: {
+          widths: ["35%", "65%"],
+          body: rows,
+        },
+        layout: {
+          hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length ? 0 : 0.5),
+          vLineWidth: () => 0,
+          hLineColor: () => "#e5e7eb",
+          paddingTop: () => 10,
+          paddingBottom: () => 10,
+        },
+      },
+      // Divider
+      {
+        canvas: [{ type: "line", x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, lineColor: "#e5e7eb" }],
+        margin: [0, 24, 0, 24],
+      },
+      // Footer note
+      {
+        text: "Thank you for your payment. This is your official receipt from Optiverifi.",
+        fontSize: 10,
+        color: "#6b7280",
+        alignment: "center",
+      },
+      {
+        text: `Generated on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+        fontSize: 9,
+        color: "#9ca3af",
+        alignment: "center",
+        margin: [0, 6, 0, 0],
+      },
+    ],
+  };
+
+  const dateStr = new Date(receipt.paidAt).toISOString().split("T")[0];
+  pdfMake.createPdf(docDefinition).download(`receipt-optiverifi-${dateStr}.pdf`);
 }
 
