@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
 import { getReceiptById, Receipt, UploadedDocument } from "@/api";
@@ -152,7 +153,7 @@ export default function TransactionDetailsPage() {
                 Transaction not found
               </h2>
               <p className="text-gray-600 mb-6">
-                The transaction you're looking for doesn't exist or you don't have access to it.
+                The transaction you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
               </p>
               <Link
                 href="/transactions"
