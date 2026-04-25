@@ -140,21 +140,21 @@ function SupplierDetailModal({
             <Grid2>
               <Field label="Min Order Quantity" value={supplier.minOrderQuantity} />
               <Field label="Lead Time" value={supplier.leadTime} />
-              <Field label="Annual Capacity" value={supplier.annualCapacity} />
             </Grid2>
           </Section>
 
           {/* Verification & Risk */}
           <Section title="Verification & Risk">
             <Grid2>
-              <Field label="Business Verification" value={supplier.businessVerification} />
+              <Field label="Reliability" value={supplier.reliability} />
               <Field label="Risk Flags" value={supplier.riskFlags} />
               <Field label="Data Source" value={supplier.dataSource} />
               <Field
                 label="Last Verified"
                 value={
-                  supplier.lastVerifiedDate
-                    ? new Date(supplier.lastVerifiedDate).toLocaleDateString()
+                  supplier.lastVerifiedDate !== undefined &&
+                  supplier.lastVerifiedDate !== null
+                    ? String(supplier.lastVerifiedDate)
                     : undefined
                 }
               />

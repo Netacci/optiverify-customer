@@ -58,15 +58,14 @@ interface Supplier {
   strengths?: string[];
   leadTime?: string;
   minOrderQuantity?: string;
-  annualCapacity?: string;
   certifications?: string[];
   capabilities?: string[];
   diversityType?: string;
   industry?: string;
   riskFlags?: string;
-  businessVerification?: string;
+  reliability?: string;
   verified?: boolean;
-  lastVerifiedDate?: string;
+  lastVerifiedDate?: number;
   dataSource?: string;
   internalNotes?: string;
   buyerMatchRecommendation?: string;
@@ -364,13 +363,6 @@ export async function generateMatchReportPDF(
                     ],
                     margin: [0, 0, 0, 4],
                   },
-                  supplier.annualCapacity && {
-                    text: [
-                      { text: "Annual Capacity: ", bold: true },
-                      supplier.annualCapacity,
-                    ],
-                    margin: [0, 0, 0, 4],
-                  },
                 ].filter(Boolean),
               },
               {
@@ -390,10 +382,10 @@ export async function generateMatchReportPDF(
                     ],
                     margin: [0, 0, 0, 4],
                   },
-                  supplier.businessVerification && {
+                  supplier.reliability && {
                     text: [
-                      { text: "Verification: ", bold: true },
-                      supplier.businessVerification,
+                      { text: "Reliability: ", bold: true },
+                      supplier.reliability,
                     ],
                     margin: [0, 0, 0, 4],
                   },
@@ -456,13 +448,14 @@ export async function generateMatchReportPDF(
               {
                 width: "*",
                 stack: [
-                  supplier.lastVerifiedDate && {
-                    text: [
-                      { text: "Last Verified: ", bold: true },
-                      new Date(supplier.lastVerifiedDate).toLocaleDateString(),
-                    ],
-                    margin: [0, 0, 0, 4],
-                  },
+                  supplier.lastVerifiedDate !== undefined &&
+                    supplier.lastVerifiedDate !== null && {
+                      text: [
+                        { text: "Last Verified: ", bold: true },
+                        String(supplier.lastVerifiedDate),
+                      ],
+                      margin: [0, 0, 0, 4],
+                    },
                 ].filter(Boolean),
               },
             ],

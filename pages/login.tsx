@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { login } from "@/api";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import Image from "next/image";
 import { AxiosError } from "axios";
 import Head from "next/head";
 
@@ -68,6 +69,20 @@ export default function LoginPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
           <div className="text-center mb-8">
+            <Link
+              href="https://optiverify.vercel.app"
+              className="inline-flex items-center justify-center mb-6"
+              aria-label="Go to Optiverifi homepage"
+            >
+              <Image
+                src="/logo.jpg"
+                alt="Optiverifi"
+                height={56}
+                width={168}
+                priority
+                className="h-14 w-auto object-contain"
+              />
+            </Link>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Welcome Back
             </h1>

@@ -77,16 +77,15 @@ export interface Supplier {
   // Order & Capacity
   minOrderQuantity?: string;
   leadTime?: string;
-  annualCapacity?: string;
   // Industry & Risk
   industry?: string;
   riskFlags?: string;
   // Data Management
   dataSource?: string;
   // Verification
-  businessVerification?: string;
+  reliability?: string;
   verified?: boolean;
-  lastVerifiedDate?: string;
+  lastVerifiedDate?: number;
   // Internal
   internalNotes?: string;
   buyerMatchRecommendation?: string;

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   getSubscriptionStatus,
@@ -243,14 +244,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
               <Link
                 href="/dashboard"
-                className="ml-4 lg:ml-0 flex items-center gap-2"
+                className="ml-4 lg:ml-0 flex items-center"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">SA</span>
-                </div>
-                <span className="text-xl font-bold text-gray-900">
-                  SupplierMatch<span className="text-blue-600">AI</span>
-                </span>
+                <Image
+                  src="/logo.jpg"
+                  alt="Optiverifi"
+                  height={40}
+                  width={120}
+                  priority
+                  className="h-10 w-auto object-contain"
+                />
               </Link>
             </div>
             <div className="flex items-center gap-3">
