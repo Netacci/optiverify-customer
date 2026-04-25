@@ -9,7 +9,6 @@ import {
   updateManagedService,
   deleteManagedService,
   getCategories,
-  getCurrentUser,
   Category,
 } from "@/api";
 import toast from "react-hot-toast";
@@ -18,7 +17,7 @@ import Link from "next/link";
 import { AxiosError } from "axios";
 import Head from "next/head";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// Same-origin via Next.js rewrites — relative URLs resolve against this host.
 
 interface UploadedDocument {
   name?: string;
@@ -87,13 +86,7 @@ export default function ManagedServiceDetailsPage() {
     enabled: isEditing,
   });
 
-  const { data: userData } = useQuery({
-    queryKey: ["currentUser"],
-    queryFn: () => getCurrentUser(),
-  });
-
   const categories = categoriesData?.data || [];
-  const currentUser = userData?.data?.user;
 
   const syncPaymentMutation = useMutation({
     mutationFn: () => syncManagedServicePayment(serviceId),
@@ -116,13 +109,9 @@ export default function ManagedServiceDetailsPage() {
   });
 
   const serviceFeePaymentMutation = useMutation({
-    mutationFn: (data: { amount: number; email: string }) =>
-      createServiceFeePaymentSession(
-        serviceId,
-        data.amount,
-        data.email,
-        currentUser?.id
-      ),
+    // The backend derives amount + email from the request + auth session,
+    // so the client only needs to identify the request.
+    mutationFn: () => createServiceFeePaymentSession(serviceId),
     onSuccess: (data) => {
       if (data.success && data.data?.url) {
         toast.success("Redirecting to payment...");
@@ -232,7 +221,8 @@ export default function ManagedServiceDetailsPage() {
 
   const getFullImageUrl = (url: string): string => {
     if (url.startsWith("http")) return url;
-    return `${BASE_URL}${url}`;
+    // Same-origin via Next.js rewrites — leading-slash paths resolve here.
+    return url;
   };
 
   // Show loader and sync when returning from a successful Stripe payment
@@ -556,20 +546,15 @@ export default function ManagedServiceDetailsPage() {
                   </div>
                   <button
                     onClick={() => {
-                      if (!request.email) {
-                        toast.error("Email not found. Please contact support.");
-                        return;
-                      }
                       if (!request.serviceFeeAmount) {
                         toast.error(
                           "Service fee amount not found. Please contact support."
                         );
                         return;
                       }
-                      serviceFeePaymentMutation.mutate({
-                        amount: request.serviceFeeAmount * 100, // Convert to cents
-                        email: request.email,
-                      });
+                      // Backend computes amount + email server-side from the
+                      // request record and authenticated user.
+                      serviceFeePaymentMutation.mutate();
                     }}
                     disabled={
                       serviceFeePaymentMutation.isPending ||

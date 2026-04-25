@@ -2,7 +2,11 @@ import axios from "axios";
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from "axios";
 import Cookies from "js-cookie";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// Same-origin via Next.js rewrites (next.config.ts). Empty baseURL means
+// axios builds relative URLs that go to the same host as this app; Next.js
+// proxies /api/* to the backend server-side. Browser never sees the
+// backend URL.
+const BASE_URL = "";
 
 export const publicRequest: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -27,7 +31,6 @@ authenticatedRequest.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log(`[authenticatedRequest] Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`);
     return config;
   }
 );

@@ -6,6 +6,27 @@ import Link from "next/link";
 import { AxiosError } from "axios";
 import Head from "next/head";
 
+// Allow only known top-level paths inside this app to prevent open-redirect.
+function safeRedirect(target: unknown): string {
+  if (typeof target !== "string") return "/dashboard";
+  // Reject protocol-relative URLs and backslash tricks.
+  if (!target.startsWith("/") || target.startsWith("//") || target.startsWith("/\\")) {
+    return "/dashboard";
+  }
+  if (/^\/+\\/.test(target)) return "/dashboard";
+  const ALLOW = [
+    "/dashboard",
+    "/requests",
+    "/settings",
+    "/billing",
+    "/payment-plans",
+    "/managed-services",
+    "/transactions",
+  ];
+  const top = "/" + target.split("/").filter(Boolean)[0];
+  return ALLOW.includes(top) ? target : "/dashboard";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -27,7 +48,7 @@ export default function LoginPage() {
     try {
       await login({ email, password });
       toast.success("Login successful!");
-      router.push("/dashboard");
+      router.push(safeRedirect(router.query.redirect));
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>;
       const errorMessage =

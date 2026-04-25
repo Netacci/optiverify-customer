@@ -16,16 +16,8 @@ export default function CheckEmailPage() {
     setResending(true);
 
     try {
-      // Handle potential inconsistency in API_URL env var (whether it includes /api or not)
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const apiUrl = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
-
-      console.log(
-        "Resending verification to:",
-        `${apiUrl}/auth/resend-verification`
-      );
-      await axios.post(`${apiUrl}/auth/resend-verification`, {
+      // Same-origin via Next.js rewrite — /api/* proxies to backend.
+      await axios.post(`/api/auth/resend-verification`, {
         email,
       });
       toast.success("Verification email resent!");

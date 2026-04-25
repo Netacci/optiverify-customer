@@ -6,6 +6,35 @@ import Link from "next/link";
 import { AxiosError } from "axios";
 import Head from "next/head";
 
+// Mirrors backend password policy (12 chars + complexity).
+function checkPassword(pw: string): string | null {
+  if (pw.length < 12) return "Password must be at least 12 characters";
+  if (!/[a-z]/.test(pw)) return "Password must contain a lowercase letter";
+  if (!/[A-Z]/.test(pw)) return "Password must contain an uppercase letter";
+  if (!/\d/.test(pw)) return "Password must contain a digit";
+  return null;
+}
+
+function safeRedirect(target: unknown): string {
+  if (typeof target !== "string") return "/login";
+  if (!target.startsWith("/") || target.startsWith("//") || target.startsWith("/\\")) {
+    return "/login";
+  }
+  if (/^\/+\\/.test(target)) return "/login";
+  const ALLOW = [
+    "/dashboard",
+    "/requests",
+    "/settings",
+    "/billing",
+    "/payment-plans",
+    "/managed-services",
+    "/transactions",
+    "/login",
+  ];
+  const top = "/" + target.split("/").filter(Boolean)[0];
+  return ALLOW.includes(top) ? target : "/login";
+}
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -16,19 +45,31 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [redirect, setRedirect] = useState<string | undefined>(undefined);
 
+  // Capture token + email from URL once and immediately scrub the URL so
+  // the secrets do not leak via Referer headers, browser history, or
+  // shoulder-surfing. Runs once on mount when router is ready.
   useEffect(() => {
-    const tokenParam = router.query.token as string;
-    const emailParam = router.query.email as string;
+    if (!router.isReady) return;
 
-    if (!tokenParam || !emailParam) {
+    const tokenParam = router.query.token;
+    const emailParam = router.query.email;
+    const redirectParam = router.query.redirect;
+
+    if (typeof tokenParam !== "string" || typeof emailParam !== "string") {
       setError("Invalid reset link. Please request a new password reset.");
       return;
     }
 
     setToken(tokenParam);
     setEmail(emailParam);
-  }, [router.query]);
+    if (typeof redirectParam === "string") setRedirect(redirectParam);
+
+    // Scrub sensitive query params from the URL bar / history / referer.
+    router.replace(router.pathname, undefined, { shallow: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +80,9 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    const pwErr = checkPassword(password);
+    if (pwErr) {
+      setError(pwErr);
       return;
     }
 
@@ -58,7 +100,7 @@ export default function ResetPasswordPage() {
     try {
       await resetPassword({ token, email, password });
       toast.success("Password reset successfully!");
-      router.push("/login");
+      router.push(safeRedirect(redirect));
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>;
       const errorMessage =
@@ -126,9 +168,10 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={12}
                   className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                   placeholder="Enter new password"
+                  aria-describedby="password-requirements"
                 />
                 <button
                   type="button"
@@ -173,6 +216,13 @@ export default function ResetPasswordPage() {
                   )}
                 </button>
               </div>
+              <p
+                id="password-requirements"
+                className="mt-2 text-xs text-gray-500"
+              >
+                Must be at least 12 characters and include an uppercase letter,
+                a lowercase letter, and a digit.
+              </p>
             </div>
 
             <div>
@@ -189,7 +239,7 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={12}
                   className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                   placeholder="Confirm new password"
                 />

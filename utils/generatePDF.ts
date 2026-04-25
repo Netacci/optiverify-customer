@@ -8,17 +8,14 @@ let fontsLoaded = false;
 
 async function loadFonts() {
   if (fontsLoaded) return;
-  
+
   try {
     // The vfs_fonts module exports font files directly as the vfs object
     const pdfFontsModule = await import("pdfmake/build/vfs_fonts");
-    
+
     // The module itself is the vfs (contains font file keys)
-    const vfs = 
-      pdfFontsModule.default ||
-      pdfFontsModule.vfs ||
-      pdfFontsModule;
-    
+    const vfs = pdfFontsModule.default || pdfFontsModule.vfs || pdfFontsModule;
+
     if (vfs && typeof vfs === "object") {
       // @ts-ignore - pdfMake.vfs is a valid property
       pdfMake.vfs = vfs;
@@ -94,11 +91,11 @@ interface RequestDetails {
 
 export async function generateMatchReportPDF(
   request: RequestDetails,
-  suppliers: Supplier[]
+  suppliers: Supplier[],
 ) {
   // Ensure fonts are loaded before generating PDF
   await loadFonts();
-  
+
   const docDefinition: any = {
     watermark: {
       text: "optiverifi",
@@ -149,10 +146,7 @@ export async function generateMatchReportPDF(
             width: "*",
             stack: [
               request.name && {
-                text: [
-                  { text: "Item Name: ", bold: true },
-                  request.name,
-                ],
+                text: [{ text: "Item Name: ", bold: true }, request.name],
                 margin: [0, 0, 0, 6],
               },
               request.category && {
@@ -300,7 +294,10 @@ export async function generateMatchReportPDF(
                 width: "*",
                 stack: [
                   supplier.contactName && {
-                    text: [{ text: "Contact: ", bold: true }, supplier.contactName],
+                    text: [
+                      { text: "Contact: ", bold: true },
+                      supplier.contactName,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                   {
@@ -321,11 +318,17 @@ export async function generateMatchReportPDF(
                 width: "*",
                 stack: [
                   supplier.matchScore !== undefined && {
-                    text: [{ text: "Match Score: ", bold: true }, `${supplier.matchScore}%`],
+                    text: [
+                      { text: "Match Score: ", bold: true },
+                      `${supplier.matchScore}%`,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                   (supplier.stateRegion || supplier.location) && {
-                    text: [{ text: "State/Region: ", bold: true }, supplier.stateRegion || supplier.location],
+                    text: [
+                      { text: "State/Region: ", bold: true },
+                      supplier.stateRegion || supplier.location,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.city && {
@@ -348,15 +351,24 @@ export async function generateMatchReportPDF(
                 width: "*",
                 stack: [
                   supplier.leadTime && {
-                    text: [{ text: "Lead Time: ", bold: true }, supplier.leadTime],
+                    text: [
+                      { text: "Lead Time: ", bold: true },
+                      supplier.leadTime,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.minOrderQuantity && {
-                    text: [{ text: "Min Order Qty: ", bold: true }, supplier.minOrderQuantity],
+                    text: [
+                      { text: "Min Order Qty: ", bold: true },
+                      supplier.minOrderQuantity,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.annualCapacity && {
-                    text: [{ text: "Annual Capacity: ", bold: true }, supplier.annualCapacity],
+                    text: [
+                      { text: "Annual Capacity: ", bold: true },
+                      supplier.annualCapacity,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                 ].filter(Boolean),
@@ -365,15 +377,24 @@ export async function generateMatchReportPDF(
                 width: "*",
                 stack: [
                   supplier.industry && {
-                    text: [{ text: "Industry: ", bold: true }, supplier.industry],
+                    text: [
+                      { text: "Industry: ", bold: true },
+                      supplier.industry,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.diversityType && {
-                    text: [{ text: "Diversity Type: ", bold: true }, supplier.diversityType],
+                    text: [
+                      { text: "Diversity Type: ", bold: true },
+                      supplier.diversityType,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                   supplier.businessVerification && {
-                    text: [{ text: "Verification: ", bold: true }, supplier.businessVerification],
+                    text: [
+                      { text: "Verification: ", bold: true },
+                      supplier.businessVerification,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                 ].filter(Boolean),
@@ -382,18 +403,29 @@ export async function generateMatchReportPDF(
             margin: [0, 0, 0, 6],
           },
           // Capabilities
-          supplier.capabilities && supplier.capabilities.length > 0 && {
-            text: [{ text: "Capabilities: ", bold: true }, supplier.capabilities.join(", ")],
-            margin: [0, 0, 0, 6],
-          },
+          supplier.capabilities &&
+            supplier.capabilities.length > 0 && {
+              text: [
+                { text: "Capabilities: ", bold: true },
+                supplier.capabilities.join(", "),
+              ],
+              margin: [0, 0, 0, 6],
+            },
           // Certifications
-          supplier.certifications && supplier.certifications.length > 0 && {
-            text: [{ text: "Certifications: ", bold: true }, supplier.certifications.join(", ")],
-            margin: [0, 0, 0, 6],
-          },
+          supplier.certifications &&
+            supplier.certifications.length > 0 && {
+              text: [
+                { text: "Certifications: ", bold: true },
+                supplier.certifications.join(", "),
+              ],
+              margin: [0, 0, 0, 6],
+            },
           // AI Analysis
           supplier.aiExplanation && {
-            text: [{ text: "Match Analysis: ", bold: true }, supplier.aiExplanation],
+            text: [
+              { text: "Match Analysis: ", bold: true },
+              supplier.aiExplanation,
+            ],
             margin: [0, 0, 0, 6],
             italics: true,
             color: "#4b5563",
@@ -405,12 +437,18 @@ export async function generateMatchReportPDF(
                 width: "*",
                 stack: [
                   supplier.riskFlags && {
-                    text: [{ text: "Risk Flags: ", bold: true }, supplier.riskFlags],
+                    text: [
+                      { text: "Risk Flags: ", bold: true },
+                      supplier.riskFlags,
+                    ],
                     margin: [0, 0, 0, 4],
                     color: "#dc2626",
                   },
                   supplier.dataSource && {
-                    text: [{ text: "Data Source: ", bold: true }, supplier.dataSource],
+                    text: [
+                      { text: "Data Source: ", bold: true },
+                      supplier.dataSource,
+                    ],
                     margin: [0, 0, 0, 4],
                   },
                 ].filter(Boolean),
@@ -432,7 +470,10 @@ export async function generateMatchReportPDF(
           },
           // Match Recommendation
           supplier.buyerMatchRecommendation && {
-            text: [{ text: "Match Recommendation: ", bold: true }, supplier.buyerMatchRecommendation],
+            text: [
+              { text: "Match Recommendation: ", bold: true },
+              supplier.buyerMatchRecommendation,
+            ],
             margin: [0, 0, 0, 6],
           },
           // Internal Notes
@@ -445,7 +486,10 @@ export async function generateMatchReportPDF(
             canvas: [
               {
                 type: "line",
-                x1: 0, y1: 0, x2: 515, y2: 0,
+                x1: 0,
+                y1: 0,
+                x2: 515,
+                y2: 0,
                 lineWidth: 0.5,
                 lineColor: "#e5e7eb",
               },
@@ -480,9 +524,11 @@ export async function generateMatchReportPDF(
     },
   };
 
-  pdfMake.createPdf(docDefinition).download(
-    `match-report-${request.name || "request"}-${new Date().toISOString().split("T")[0]}.pdf`
-  );
+  pdfMake
+    .createPdf(docDefinition)
+    .download(
+      `match-report-${request.name || "request"}-${new Date().toISOString().split("T")[0]}.pdf`,
+    );
 }
 
 interface ReceiptData {
@@ -536,7 +582,12 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
   const rows: any[] = [
     [
       { text: "Transaction ID", bold: true, fontSize: 10, color: "#6b7280" },
-      { text: receipt.transactionId, fontSize: 10, color: "#111827", font: "Roboto" },
+      {
+        text: receipt.transactionId,
+        fontSize: 10,
+        color: "#111827",
+        font: "Roboto",
+      },
     ],
     [
       { text: "Payment Date", bold: true, fontSize: 10, color: "#6b7280" },
@@ -551,7 +602,11 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
   if (receipt.type) {
     rows.push([
       { text: "Payment Type", bold: true, fontSize: 10, color: "#6b7280" },
-      { text: typeLabels[receipt.type] || receipt.type, fontSize: 10, color: "#111827" },
+      {
+        text: typeLabels[receipt.type] || receipt.type,
+        fontSize: 10,
+        color: "#111827",
+      },
     ]);
   }
 
@@ -572,14 +627,22 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
   if (receipt.planType) {
     rows.push([
       { text: "Plan", bold: true, fontSize: 10, color: "#6b7280" },
-      { text: planLabels[receipt.planType] || receipt.planType, fontSize: 10, color: "#111827" },
+      {
+        text: planLabels[receipt.planType] || receipt.planType,
+        fontSize: 10,
+        color: "#111827",
+      },
     ]);
   }
 
   if (receipt.credits) {
     rows.push([
       { text: "Credits", bold: true, fontSize: 10, color: "#6b7280" },
-      { text: `${receipt.credits} credit${receipt.credits > 1 ? "s" : ""}`, fontSize: 10, color: "#111827" },
+      {
+        text: `${receipt.credits} credit${receipt.credits > 1 ? "s" : ""}`,
+        fontSize: 10,
+        color: "#111827",
+      },
     ]);
   }
 
@@ -597,14 +660,36 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
         columns: [
           {
             stack: [
-              { text: "PAYMENT RECEIPT", fontSize: 22, bold: true, color: "#111827" },
-              { text: "Optiverifi", fontSize: 12, color: "#6b7280", margin: [0, 4, 0, 0] },
+              {
+                text: "PAYMENT RECEIPT",
+                fontSize: 22,
+                bold: true,
+                color: "#111827",
+              },
+              {
+                text: "Optiverifi",
+                fontSize: 12,
+                color: "#6b7280",
+                margin: [0, 4, 0, 0],
+              },
             ],
           },
           {
             stack: [
-              { text: "Payment made to", fontSize: 10, color: "#6b7280", alignment: "right" },
-              { text: "Optiverifi", fontSize: 14, bold: true, color: "#111827", alignment: "right", margin: [0, 2, 0, 0] },
+              {
+                text: "Payment made to",
+                fontSize: 10,
+                color: "#6b7280",
+                alignment: "right",
+              },
+              {
+                text: "Optiverifi",
+                fontSize: 14,
+                bold: true,
+                color: "#111827",
+                alignment: "right",
+                margin: [0, 2, 0, 0],
+              },
             ],
             alignment: "right",
           },
@@ -613,7 +698,17 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
       },
       // Divider
       {
-        canvas: [{ type: "line", x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, lineColor: "#e5e7eb" }],
+        canvas: [
+          {
+            type: "line",
+            x1: 0,
+            y1: 0,
+            x2: 495,
+            y2: 0,
+            lineWidth: 1,
+            lineColor: "#e5e7eb",
+          },
+        ],
         margin: [0, 0, 0, 24],
       },
       // Receipt details table
@@ -623,7 +718,8 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
           body: rows,
         },
         layout: {
-          hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length ? 0 : 0.5),
+          hLineWidth: (i: number, node: any) =>
+            i === 0 || i === node.table.body.length ? 0 : 0.5,
           vLineWidth: () => 0,
           hLineColor: () => "#e5e7eb",
           paddingTop: () => 10,
@@ -632,7 +728,17 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
       },
       // Divider
       {
-        canvas: [{ type: "line", x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, lineColor: "#e5e7eb" }],
+        canvas: [
+          {
+            type: "line",
+            x1: 0,
+            y1: 0,
+            x2: 495,
+            y2: 0,
+            lineWidth: 1,
+            lineColor: "#e5e7eb",
+          },
+        ],
         margin: [0, 24, 0, 24],
       },
       // Footer note
@@ -653,6 +759,7 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
   };
 
   const dateStr = new Date(receipt.paidAt).toISOString().split("T")[0];
-  pdfMake.createPdf(docDefinition).download(`receipt-optiverifi-${dateStr}.pdf`);
+  pdfMake
+    .createPdf(docDefinition)
+    .download(`receipt-optiverifi-${dateStr}.pdf`);
 }
-

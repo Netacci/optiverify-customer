@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { verifyEmail } from "@/api";
 import toast from "react-hot-toast";
@@ -9,11 +9,28 @@ export default function VerifyPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Guard so the verification effect runs at most once even under React 18+
+  // strict-mode double invocation. Without this, the second invocation would
+  // see a scrubbed URL with no token.
+  const ranRef = useRef(false);
 
-  const token = router.query.token as string;
-  const email = router.query.email as string;
-
+  // Capture token + email from URL once and immediately scrub the URL so the
+  // secrets do not leak via Referer headers, browser history, or
+  // shoulder-surfing. Runs once when router is ready.
   useEffect(() => {
+    if (!router.isReady) return;
+    if (ranRef.current) return;
+    ranRef.current = true;
+
+    const tokenParam = router.query.token;
+    const emailParam = router.query.email;
+    const token = typeof tokenParam === "string" ? tokenParam : "";
+    const email = typeof emailParam === "string" ? emailParam : "";
+
+    // Scrub query params from the URL bar / history / referer before doing
+    // anything async. The verification call itself uses the local copies.
+    router.replace(router.pathname, undefined, { shallow: true });
+
     const performVerification = async () => {
       if (!token || !email) {
         setError("Invalid verification link");
@@ -33,12 +50,14 @@ export default function VerifyPage() {
             response?.data?.hasPassword === false ||
             response?.data?.isNewUser
           ) {
-            // New user or user without password - redirect to create password
+            // New user or user without password - redirect to create password.
+            // Note: the create-password page will itself scrub these params on
+            // mount, so they live in the URL only for the brief navigation.
             toast.success("Email verified! Please create your password.");
             router.push(
-              `/create-password?token=${token}&email=${encodeURIComponent(
-                email
-              )}`
+              `/create-password?token=${encodeURIComponent(
+                token
+              )}&email=${encodeURIComponent(email)}`
             );
           } else {
             // Existing user with password - redirect to login
@@ -60,10 +79,9 @@ export default function VerifyPage() {
       }
     };
 
-    if (router.isReady) {
-      performVerification();
-    }
-  }, [token, email, router]);
+    performVerification();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   if (loading) {
     return (

@@ -72,10 +72,6 @@ export const getManagedServices = async (params?: {
   page?: number;
   limit?: number;
 }) => {
-  console.log(
-    "[getManagedServices] Making API call to /api/managed-services",
-    params
-  );
   const response = await authenticatedRequest.get<{
     success: boolean;
     data:
@@ -90,7 +86,6 @@ export const getManagedServices = async (params?: {
         }
       | ManagedService[]; // Handle both array and paginated object structure
   }>("/api/managed-services", { params });
-  console.log("[getManagedServices] Response:", response.data);
   return response.data;
 };
 
@@ -123,12 +118,15 @@ export const syncManagedServicePayment = async (id: string) => {
   return response.data;
 };
 
-export const createServiceFeePaymentSession = async (
-  id: string,
-  amount: number,
-  email: string,
-  userId?: string
-) => {
+/**
+ * Create a Stripe checkout session for the managed-service service fee.
+ *
+ * The backend derives `amount` from the request record and `email`/`userId`
+ * from the authenticated session. We MUST NOT send those from the client —
+ * trusting them would let a logged-in user pay $0.01 for a $999 fee or
+ * attribute another user's payment to themselves. (Audit finding H-3.)
+ */
+export const createServiceFeePaymentSession = async (id: string) => {
   const response = await authenticatedRequest.post<{
     success: boolean;
     message: string;
@@ -139,9 +137,6 @@ export const createServiceFeePaymentSession = async (
     };
   }>(`/api/managed-services/payment/create-session`, {
     requestId: id,
-    amount,
-    email,
-    ...(userId && { userId }),
   });
   return response.data;
 };

@@ -9,7 +9,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { generateReceiptPDF } from "@/utils/generatePDF";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// Same-origin via Next.js rewrites — relative URLs resolve against this host.
 
 export default function TransactionDetailsPage() {
   const router = useRouter();
@@ -74,7 +74,8 @@ export default function TransactionDetailsPage() {
 
   const getFullImageUrl = (url: string): string => {
     if (url.startsWith("http")) return url;
-    return `${BASE_URL}${url}`;
+    // Same-origin via Next.js rewrites — leading-slash paths resolve here.
+    return url;
   };
 
   const openDocument = (doc: UploadedDocument): void => {

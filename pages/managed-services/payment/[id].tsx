@@ -4,14 +4,16 @@ import toast from "react-hot-toast";
 import Head from "next/head";
 import Cookies from "js-cookie";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// Same-origin via Next.js rewrites (next.config.ts). API calls use relative
+// paths (/api/...) and Next.js proxies them to the backend.
 
 export default function ManagedServicePaymentPage() {
   const router = useRouter();
   const id = router.query.id as string;
   const [requestId, setRequestId] = useState<string>("");
+  // `fee` is display-only. The backend computes the authoritative amount from
+  // the request record server-side — never trust this value for billing.
   const [fee, setFee] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -20,26 +22,13 @@ export default function ManagedServicePaymentPage() {
 
     setRequestId(id || "");
     const feeParam = router.query.fee as string;
-    const emailParam = router.query.email as string;
     setFee(feeParam || "199");
-    setEmail(emailParam || "");
     setLoading(false);
   }, [router.isReady, router.query, id]);
 
   const handlePayment = async () => {
     if (!requestId) {
       toast.error("Request ID is missing");
-      return;
-    }
-
-    if (!email || !email.trim()) {
-      toast.error("Please enter your email address");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      toast.error("Please enter a valid email address");
       return;
     }
 
@@ -54,33 +43,17 @@ export default function ManagedServicePaymentPage() {
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      // If logged in, get current user id so backend can set metadata (receipt vs verify email)
-      let userId: string | undefined;
-      if (token) {
-        try {
-          const meRes = await fetch(`${API_URL}/api/auth/me`, {
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const meData = await meRes.json();
-          if (meData?.data?.user?.id) userId = meData.data.user.id;
-        } catch {
-          // ignore
-        }
-      }
-
+      // The backend (Wave 2A2) ignores client-supplied `amount`, `email`, and
+      // `userId` and derives them from the request record + authenticated
+      // session. Trusting client values would let users underpay or attribute
+      // payments to other accounts. (Audit finding H-3.)
       const response = await fetch(
-        `${API_URL}/api/managed-services/payment/create-session`,
+        `/api/managed-services/payment/create-session`,
         {
           method: "POST",
           headers,
           credentials: "include",
-          body: JSON.stringify({
-            requestId,
-            amount: parseFloat(fee) * 100,
-            email: email.trim(),
-            ...(userId && { userId }),
-          }),
+          body: JSON.stringify({ requestId }),
         }
       );
 
@@ -149,23 +122,11 @@ export default function ManagedServicePaymentPage() {
             </p>
           </div>
 
-          <div className="mb-6">
-            <label
-              htmlFor="email"
-              className="block text-sm font-semibold text-gray-900 mb-2"
-            >
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 text-base transition-all border-gray-200"
-            />
-          </div>
+          {/*
+            Email input removed: the backend now uses the authenticated user's
+            email server-side. Letting the user type a different address here
+            allowed receipts to be misrouted and has no legitimate use.
+          */}
 
           <div className="space-y-4">
             <button

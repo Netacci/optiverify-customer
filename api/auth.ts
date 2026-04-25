@@ -63,6 +63,10 @@ export const verifyEmail = async (
 
 /**
  * Create password for new user
+ *
+ * Note: The backend sets the auth cookie via Set-Cookie headers
+ * (httpOnly, secure, sameSite=strict). The frontend does NOT set
+ * the cookie via JavaScript — that would defeat httpOnly protection.
  */
 export const createPassword = async (
   data: CreatePasswordData
@@ -71,25 +75,21 @@ export const createPassword = async (
     "/api/auth/create-password",
     data
   );
-  // Set cookie on successful password creation (customer token)
-  if (response.data.data?.token) {
-    Cookies.set("cd-token", response.data.data.token, { expires: 30 });
-  }
   return response.data;
 };
 
 /**
  * Login user
+ *
+ * Note: The backend sets the auth cookie via Set-Cookie headers
+ * (httpOnly, secure, sameSite=strict). The frontend does NOT set
+ * the cookie via JavaScript — that would defeat httpOnly protection.
  */
 export const login = async (data: LoginData): Promise<AuthResponse> => {
   const response = await publicRequest.post<AuthResponse>(
     "/api/auth/login",
     data
   );
-  // Set cookie on successful login (customer token)
-  if (response.data.data?.token) {
-    Cookies.set("cd-token", response.data.data.token, { expires: 30 });
-  }
   return response.data;
 };
 
