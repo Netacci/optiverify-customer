@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,15 +9,42 @@ import {
   updateManagedService,
   deleteManagedService,
   getCategories,
+  getSubcategories,
+  getSystemSettings,
   Category,
 } from "@/api";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/DashboardLayout";
+import DatePicker from "@/components/DatePicker";
 import Link from "next/link";
 import { AxiosError } from "axios";
 import Head from "next/head";
+import { generateManagedServiceReportPDF } from "@/utils/generatePDF";
 
-// Same-origin via Next.js rewrites — relative URLs resolve against this host.
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia",
+  "Washington", "West Virginia", "Wisconsin", "Wyoming",
+];
+
+
+const formatBudget = (raw?: string): string => {
+  if (!raw) return "";
+  return raw.replace(
+    /\$?\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{3,}(?:\.\d+)?)/g,
+    (_match, num: string) => {
+      const value = Number(num.replace(/,/g, ""));
+      if (!Number.isFinite(value)) return _match;
+      return `$${value.toLocaleString("en-US")}`;
+    },
+  );
+};
 
 interface UploadedDocument {
   name?: string;
@@ -47,25 +74,44 @@ export default function ManagedServiceDetailsPage() {
 
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
-  const [editFormData, setEditFormData] = useState({
+  const [editFormData, setEditFormData] = useState<{
+    itemName: string;
+    category: string;
+    subCategory: string;
+    quantity: string;
+    description: string;
+    estimatedSpendRange: string;
+    urgency: string;
+    complianceLevel: "commercial" | "government" | "regulated";
+    deliveryLocation: string;
+    internalDeadline: string;
+  }>({
+    itemName: "",
     category: "",
-    specifications: "",
+    subCategory: "",
     quantity: "",
+    description: "",
+    estimatedSpendRange: "",
+    urgency: "",
+    complianceLevel: "commercial",
     deliveryLocation: "",
-    budget: "",
-    deadline: "",
+    internalDeadline: "",
   });
 
   // Delete Confirmation State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Preview Modal State
+
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
     doc: UploadedDocument | null;
+    blobUrl: string | null;
+    isLoading: boolean;
   }>({
     isOpen: false,
     doc: null,
+    blobUrl: null,
+    isLoading: false,
   });
 
   // Poll every 30 seconds for updates
@@ -73,11 +119,13 @@ export default function ManagedServiceDetailsPage() {
     data: requestData,
     isLoading,
     refetch,
+    error: requestError,
   } = useQuery({
     queryKey: ["managedService", serviceId],
     queryFn: () => getManagedServiceDetails(serviceId),
     enabled: !!serviceId && router.isReady,
     refetchInterval: 30000,
+    retry: false,
   });
 
   const { data: categoriesData } = useQuery({
@@ -87,6 +135,31 @@ export default function ManagedServiceDetailsPage() {
   });
 
   const categories = categoriesData?.data || [];
+
+  const selectedCategoryObj = categories.find(
+    (cat: Category) => cat.name === editFormData.category
+  );
+
+  const { data: subcategoriesData } = useQuery({
+    queryKey: ["subcategories", selectedCategoryObj?._id],
+    queryFn: () => getSubcategories(selectedCategoryObj!._id),
+    enabled: isEditing && !!selectedCategoryObj?._id,
+  });
+
+  const subcategories = subcategoriesData?.data || [];
+
+  const { data: settingsData } = useQuery({
+    queryKey: ["systemSettings", "public"],
+    queryFn: getSystemSettings,
+    enabled: isEditing,
+  });
+
+  const urgencyFees = settingsData?.data?.urgencyFees || {
+    standard: { fee: 0, duration: "5-7 days" },
+    expedited: { fee: 500, duration: "2-3 days" },
+    emergency: { fee: 1000, duration: "24-48 hrs" },
+  };
+  const availableUrgencies = Object.keys(urgencyFees);
 
   const syncPaymentMutation = useMutation({
     mutationFn: () => syncManagedServicePayment(serviceId),
@@ -198,9 +271,33 @@ export default function ManagedServiceDetailsPage() {
   };
 
   // Document helpers
-  const openDocument = (doc: UploadedDocument): void => {
-    setPreviewModal({ isOpen: true, doc });
+  const openDocument = async (doc: UploadedDocument): Promise<void> => {
+    setPreviewModal({ isOpen: true, doc, blobUrl: null, isLoading: true });
+    try {
+      const response = await fetch(getFullImageUrl(doc.url));
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setPreviewModal({ isOpen: true, doc, blobUrl, isLoading: false });
+    } catch (error) {
+      console.error("Preview failed:", error);
+      toast.error("Failed to load preview");
+      setPreviewModal({ isOpen: false, doc: null, blobUrl: null, isLoading: false });
+    }
   };
+
+  const closePreview = (): void => {
+    if (previewModal.blobUrl) URL.revokeObjectURL(previewModal.blobUrl);
+    setPreviewModal({ isOpen: false, doc: null, blobUrl: null, isLoading: false });
+  };
+
+  // Revoke any outstanding blob URL on unmount.
+  useEffect(() => {
+    return () => {
+      if (previewModal.blobUrl) URL.revokeObjectURL(previewModal.blobUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const downloadDocument = async (doc: UploadedDocument): Promise<void> => {
     try {
@@ -225,33 +322,82 @@ export default function ManagedServiceDetailsPage() {
     return url;
   };
 
-  // Show loader and sync when returning from a successful Stripe payment
+
+  const [paymentRecentlyConfirmed, setPaymentRecentlyConfirmed] = useState(false);
+  const paymentArrivedRef = useRef(false);
   useEffect(() => {
-    if (paymentStatus === "success" && router.isReady) {
+    if (
+      paymentStatus === "success" &&
+      router.isReady &&
+      !paymentArrivedRef.current
+    ) {
+      paymentArrivedRef.current = true;
+      setPaymentRecentlyConfirmed(true);
       setIsProcessingPayment(true);
-      // Remove the query param immediately so a refresh doesn't re-trigger this
-      router.replace(`/managed-services/${serviceId}`, undefined, { shallow: true });
-      // Give the webhook a couple of seconds to process, then sync
-      setTimeout(() => {
+      // Strip the query param right away so a refresh doesn't re-trigger this.
+      router.replace(`/managed-services/${serviceId}`, undefined, {
+        shallow: true,
+      });
+      // Give the webhook a couple of seconds to fire, then nudge sync + refetch.
+      const t = setTimeout(() => {
         syncPaymentMutation.mutate();
         refetch();
       }, 2000);
+     
+      const release = setTimeout(() => {
+        setPaymentRecentlyConfirmed(false);
+      }, 30000);
+      return () => {
+        clearTimeout(t);
+        clearTimeout(release);
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentStatus, router.isReady]);
+
+
+  const successToastShownRef = useRef(false);
+  useEffect(() => {
+    const stage = requestData?.data?.stage;
+    if (
+      paymentRecentlyConfirmed &&
+      stage &&
+      stage !== "payment_pending" &&
+      !successToastShownRef.current
+    ) {
+      successToastShownRef.current = true;
+      toast.success("Payment confirmed");
+      setPaymentRecentlyConfirmed(false);
+    }
+  }, [paymentRecentlyConfirmed, requestData]);
 
   const request = requestData?.data;
 
   // Initialize edit form when opening edit mode
   useEffect(() => {
     if (isEditing && request) {
+      
+      const rawDeadline = request.internalDeadline || request.deadline || "";
+      const normalizedDeadline = rawDeadline
+        ? new Date(rawDeadline).toISOString().split("T")[0]
+        : "";
+      const allowedCompliance = ["commercial", "government", "regulated"] as const;
+      const compliance = allowedCompliance.includes(
+        request.complianceLevel as (typeof allowedCompliance)[number]
+      )
+        ? request.complianceLevel
+        : "commercial";
       setEditFormData({
+        itemName: request.itemName || "",
         category: request.category || "",
-        specifications: request.specifications || "",
+        subCategory: request.subCategory || "",
         quantity: request.quantity || "",
+        description: request.description || request.specifications || "",
+        estimatedSpendRange: request.estimatedSpendRange || request.budget || "",
+        urgency: request.urgency || "",
+        complianceLevel: compliance,
         deliveryLocation: request.deliveryLocation || "",
-        budget: request.budget || "",
-        deadline: request.deadline || "",
+        internalDeadline: normalizedDeadline,
       });
     }
   }, [isEditing, request]);
@@ -266,7 +412,17 @@ export default function ManagedServiceDetailsPage() {
 
   const currentStep = getCurrentStepIndex();
 
-  if (isProcessingPayment || syncPaymentMutation.isPending) {
+ 
+  const stillSyncingPayment =
+    paymentRecentlyConfirmed || syncPaymentMutation.isPending;
+  const dataLooksStaleAfterPayment =
+    !!request &&
+    request.stage === "payment_pending" &&
+    stillSyncingPayment;
+  if (
+    (!request && (isProcessingPayment || stillSyncingPayment)) ||
+    dataLooksStaleAfterPayment
+  ) {
     return (
       <>
         <Head>
@@ -277,37 +433,13 @@ export default function ManagedServiceDetailsPage() {
             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center">
               <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
             </div>
-            <div className="text-center">
+            <div className="text-center max-w-sm">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 Processing your payment
               </h2>
               <p className="text-gray-500 text-sm">
-                Please wait while we confirm your payment and update your request…
-              </p>
-            </div>
-          </div>
-        </DashboardLayout>
-      </>
-    );
-  }
-
-  if (isProcessingPayment || syncPaymentMutation.isPending) {
-    return (
-      <>
-        <Head>
-          <title>Processing Payment - Optiverifi</title>
-        </Head>
-        <DashboardLayout>
-          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
-            </div>
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Processing your payment
-              </h2>
-              <p className="text-gray-500 text-sm">
-                Please wait while we confirm your payment and update your request…
+                We&apos;re confirming your payment with Stripe. This usually
+                takes a few seconds.
               </p>
             </div>
           </div>
@@ -332,22 +464,81 @@ export default function ManagedServiceDetailsPage() {
   }
 
   if (!request) {
+  
+    const apiErrorMessage = (() => {
+      const e = requestError as
+        | {
+            response?: { data?: { message?: string }; status?: number };
+            message?: string;
+          }
+        | undefined;
+      return (
+        e?.response?.data?.message ||
+        e?.message ||
+        "We couldn't load this request."
+      );
+    })();
+    const apiStatus = (
+      requestError as { response?: { status?: number } } | undefined
+    )?.response?.status;
+
     return (
       <>
         <Head>
-          <title>Service Not Found - Optiverifi</title>
+          <title>Request Not Found - Optiverifi</title>
         </Head>
         <DashboardLayout>
-          <div className="text-center py-16">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Request not found
+          <div className="max-w-md mx-auto text-center py-16">
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-amber-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              We couldn&apos;t load this request
             </h2>
-            <Link
-              href="/managed-services"
-              className="text-blue-600 hover:underline mt-4 inline-block"
-            >
-              Back to Managed Services
-            </Link>
+            <p className="text-gray-500 text-sm mb-6">
+              {apiErrorMessage}
+              {apiStatus ? ` (${apiStatus})` : ""}
+            </p>
+            <div className="grid gap-3">
+              <button
+                onClick={() => syncPaymentMutation.mutate()}
+                disabled={syncPaymentMutation.isPending}
+                className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60"
+              >
+                {syncPaymentMutation.isPending
+                  ? "Syncing payment..."
+                  : "I just paid, sync now"}
+              </button>
+              <button
+                onClick={() => refetch()}
+                className="w-full py-3 px-6 bg-white text-gray-700 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                Refresh
+              </button>
+              <Link
+                href="/managed-services"
+                className="text-gray-500 hover:text-gray-700 text-sm mt-2"
+              >
+                Back to Managed Services
+              </Link>
+            </div>
+            <p className="text-xs text-gray-400 mt-6">
+              If this keeps happening after a successful payment, contact
+              support with this request ID:{" "}
+              <span className="font-mono">{serviceId}</span>
+            </p>
           </div>
         </DashboardLayout>
       </>
@@ -440,9 +631,14 @@ export default function ManagedServiceDetailsPage() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {request.category}
+                    {request.itemName}
                   </h1>
-                  <p className="text-gray-600">ID: {request._id}</p>
+                  <p className="text-gray-600">
+                    {request.category}
+                    {request.subCategory && (
+                      <span className="text-gray-500"> · {request.subCategory}</span>
+                    )}
+                  </p>
                 </div>
                 <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-semibold text-sm">
                   Managed Sourcing
@@ -873,22 +1069,20 @@ export default function ManagedServiceDetailsPage() {
                                         )}
                                       </div>
                                       <div className="space-y-2">
-                                        {supplier.quoteAmount &&
-                                          supplier.quoteAmount > 0 && (
+                                        {(supplier.quoteAmount ?? 0) > 0 && (
                                             <div>
                                               <span className="text-sm font-medium text-gray-600">
                                                 Quote Amount:{" "}
                                               </span>
                                               <span className="text-lg font-bold text-gray-900">
                                                 $
-                                                {supplier.quoteAmount.toLocaleString()}{" "}
+                                                {supplier.quoteAmount!.toLocaleString()}{" "}
                                                 {supplier.currency || "USD"}
                                               </span>
                                             </div>
                                           )}
-                                        {supplier.negotiatedAmount &&
-                                          supplier.negotiatedAmount > 0 &&
-                                          supplier.quoteAmount &&
+                                        {(supplier.negotiatedAmount ?? 0) > 0 &&
+                                          (supplier.quoteAmount ?? 0) > 0 &&
                                           supplier.negotiatedAmount !==
                                             supplier.quoteAmount && (
                                             <div>
@@ -897,24 +1091,23 @@ export default function ManagedServiceDetailsPage() {
                                               </span>
                                               <span className="text-lg font-bold text-green-600">
                                                 $
-                                                {supplier.negotiatedAmount.toLocaleString()}{" "}
+                                                {supplier.negotiatedAmount!.toLocaleString()}{" "}
                                                 {supplier.currency || "USD"}
                                               </span>
-                                              {supplier.quoteAmount >
-                                                supplier.negotiatedAmount && (
+                                              {supplier.quoteAmount! >
+                                                supplier.negotiatedAmount! && (
                                                 <div className="mt-1 text-xs text-green-600">
                                                   Savings: $
                                                   {(
-                                                    supplier.quoteAmount -
-                                                    supplier.negotiatedAmount
+                                                    supplier.quoteAmount! -
+                                                    supplier.negotiatedAmount!
                                                   ).toLocaleString()}
                                                 </div>
                                               )}
                                             </div>
                                           )}
-                                        {supplier.negotiatedAmount &&
-                                          supplier.negotiatedAmount > 0 &&
-                                          supplier.quoteAmount &&
+                                        {(supplier.negotiatedAmount ?? 0) > 0 &&
+                                          (supplier.quoteAmount ?? 0) > 0 &&
                                           supplier.negotiatedAmount ===
                                             supplier.quoteAmount && (
                                             <div>
@@ -923,7 +1116,7 @@ export default function ManagedServiceDetailsPage() {
                                               </span>
                                               <span className="text-lg font-bold text-gray-900">
                                                 $
-                                                {supplier.negotiatedAmount.toLocaleString()}{" "}
+                                                {supplier.negotiatedAmount!.toLocaleString()}{" "}
                                                 {supplier.currency || "USD"}
                                               </span>
                                             </div>
@@ -1056,8 +1249,36 @@ export default function ManagedServiceDetailsPage() {
                         </div>
                       )}
 
-                      {/* Feedback Button */}
-                      <div className="mt-6 pt-6 border-t border-gray-200">
+                      {/* Action Buttons */}
+                      <div className="mt-6 pt-6 border-t border-gray-200 flex flex-wrap gap-3">
+                        <button
+                          onClick={async () => {
+                            try {
+                              await generateManagedServiceReportPDF(request);
+                            } catch (error) {
+                              console.error("Error generating PDF:", error);
+                              toast.error(
+                                "Failed to generate PDF. Please try again."
+                              );
+                            }
+                          }}
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors shadow-sm hover:shadow-md"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          Download Report
+                        </button>
                         <Link
                           href={`/feedback?type=matching_service&matchingServiceId=${serviceId}`}
                           className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-sm hover:shadow-md"
@@ -1138,28 +1359,44 @@ export default function ManagedServiceDetailsPage() {
                       Request Details
                     </h3>
                     <dl className="space-y-4">
-                    <div>
-                        <dt className="text-sm text-gray-500">
-                          Item Name
-                        </dt>
-                        <dd className="text-sm font-medium text-gray-900 mt-1">
-                          {request.itemName}
-                        </dd>
-                      </div>
                       <div>
-                        <dt className="text-sm text-gray-500">
-                          Specifications
-                        </dt>
+                        <dt className="text-sm text-gray-500">Category</dt>
                         <dd className="text-sm font-medium text-gray-900 mt-1">
-                          {request.specifications}
+                          {request.category}
                         </dd>
                       </div>
+                      {request.subCategory && (
+                        <div>
+                          <dt className="text-sm text-gray-500">Subcategory</dt>
+                          <dd className="text-sm font-medium text-gray-900 mt-1">
+                            {request.subCategory}
+                          </dd>
+                        </div>
+                      )}
                       <div>
                         <dt className="text-sm text-gray-500">Quantity</dt>
                         <dd className="text-sm font-medium text-gray-900 mt-1">
                           {request.quantity}
                         </dd>
                       </div>
+                      {(request.description || request.specifications) && (
+                        <div>
+                          <dt className="text-sm text-gray-500">Description</dt>
+                          <dd className="text-sm font-medium text-gray-900 mt-1 whitespace-pre-line">
+                            {request.description || request.specifications}
+                          </dd>
+                        </div>
+                      )}
+                      {(request.estimatedSpendRange || request.budget) && (
+                        <div>
+                          <dt className="text-sm text-gray-500">Budget</dt>
+                          <dd className="text-sm font-medium text-gray-900 mt-1">
+                            {formatBudget(
+                              request.estimatedSpendRange || request.budget,
+                            )}
+                          </dd>
+                        </div>
+                      )}
                       {request.urgency && (
                         <div>
                           <dt className="text-sm text-gray-500">Urgency</dt>
@@ -1170,6 +1407,36 @@ export default function ManagedServiceDetailsPage() {
                                 ({request.urgencyDuration})
                               </span>
                             )}
+                          </dd>
+                        </div>
+                      )}
+                      {request.complianceLevel && (
+                        <div>
+                          <dt className="text-sm text-gray-500">
+                            Compliance Level
+                          </dt>
+                          <dd className="text-sm font-medium text-gray-900 mt-1 capitalize">
+                            {request.complianceLevel}
+                          </dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt className="text-sm text-gray-500">
+                          Delivery Location
+                        </dt>
+                        <dd className="text-sm font-medium text-gray-900 mt-1">
+                          {request.deliveryLocation}
+                        </dd>
+                      </div>
+                      {(request.internalDeadline || request.deadline) && (
+                        <div>
+                          <dt className="text-sm text-gray-500">
+                            Internal Deadline
+                          </dt>
+                          <dd className="text-sm font-medium text-gray-900 mt-1">
+                            {new Date(
+                              request.internalDeadline || request.deadline || ""
+                            ).toLocaleDateString()}
                           </dd>
                         </div>
                       )}
@@ -1195,14 +1462,6 @@ export default function ManagedServiceDetailsPage() {
                           </dd>
                         </div>
                       )}
-                      <div>
-                        <dt className="text-sm text-gray-500">
-                          Delivery Location
-                        </dt>
-                        <dd className="text-sm font-medium text-gray-900 mt-1">
-                          {request.deliveryLocation}
-                        </dd>
-                      </div>
                     </dl>
                   </div>
                   <div>
@@ -1241,14 +1500,21 @@ export default function ManagedServiceDetailsPage() {
 
           {/* Edit Modal */}
           {isEditing && (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm">
-              <div className="flex min-h-screen items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full">
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    updateMutation.mutate(editFormData);
+                  }}
+                  className="flex flex-col min-h-0 flex-1"
+                >
+                  <div className="p-6 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
                     <h2 className="text-xl font-bold text-gray-900">
                       Edit Request
                     </h2>
                     <button
+                      type="button"
                       onClick={() => setIsEditing(false)}
                       className="text-gray-400 hover:text-gray-600"
                     >
@@ -1267,161 +1533,287 @@ export default function ManagedServiceDetailsPage() {
                       </svg>
                     </button>
                   </div>
-                  <div className="p-6">
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        updateMutation.mutate(editFormData);
-                      }}
-                      className="space-y-4"
-                    >
+                  <div className="p-6 overflow-y-auto flex-1 space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Category
-                          {request.stage !== "payment_pending" && (
-                            <span className="ml-2 text-xs text-gray-500">
-                              (Cannot be changed after payment)
-                            </span>
-                          )}
+                          Item Name
                         </label>
-                        <select
-                          value={editFormData.category}
+                        <input
+                          type="text"
+                          value={editFormData.itemName}
                           onChange={(e) =>
                             setEditFormData({
                               ...editFormData,
-                              category: e.target.value,
+                              itemName: e.target.value,
                             })
                           }
-                          disabled={request.stage !== "payment_pending"}
-                          className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                            request.stage !== "payment_pending"
-                              ? "bg-gray-100 cursor-not-allowed opacity-60"
-                              : ""
-                          }`}
-                          required={request.stage === "payment_pending"}
-                        >
-                          <option value="">Select category</option>
-                          {categories.map((cat: Category) => (
-                            <option key={cat._id} value={cat.name}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                        {request.stage !== "payment_pending" && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            Category is locked after payment because it affects
-                            the service fee price.
-                          </p>
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Category
+                            {request.stage !== "payment_pending" && (
+                              <span className="ml-2 text-xs text-gray-500">
+                                (Locked after payment)
+                              </span>
+                            )}
+                          </label>
+                          <select
+                            value={editFormData.category}
+                            onChange={(e) =>
+                              setEditFormData({
+                                ...editFormData,
+                                category: e.target.value,
+                                subCategory: "",
+                              })
+                            }
+                            disabled={request.stage !== "payment_pending"}
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                              request.stage !== "payment_pending"
+                                ? "bg-gray-100 cursor-not-allowed opacity-60"
+                                : ""
+                            }`}
+                            required={request.stage === "payment_pending"}
+                          >
+                            <option value="">Select category</option>
+                            {categories.map((cat: Category) => (
+                              <option key={cat._id} value={cat.name}>
+                                {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {subcategories.length > 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Subcategory
+                              <span className="ml-2 text-xs text-gray-500">
+                                (Optional)
+                              </span>
+                            </label>
+                            <select
+                              value={editFormData.subCategory}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  subCategory: e.target.value,
+                                })
+                              }
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select subcategory</option>
+                              {subcategories.map((sub) => (
+                                <option key={sub._id} value={sub.name}>
+                                  {sub.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Specifications
+                          Quantity
                         </label>
-                        <textarea
-                          value={editFormData.specifications}
+                        <input
+                          type="text"
+                          value={editFormData.quantity}
                           onChange={(e) =>
                             setEditFormData({
                               ...editFormData,
-                              specifications: e.target.value,
+                              quantity: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., 5000 units"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Description
+                        </label>
+                        <textarea
+                          value={editFormData.description}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              description: e.target.value,
                             })
                           }
                           rows={4}
+                          placeholder="Describe exactly what you need (materials, dimensions, standards, etc.)"
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
                           required
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Quantity
-                          </label>
-                          <input
-                            type="text"
-                            value={editFormData.quantity}
-                            onChange={(e) =>
-                              setEditFormData({
-                                ...editFormData,
-                                quantity: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Delivery Location
-                          </label>
-                          <input
-                            type="text"
-                            value={editFormData.deliveryLocation}
-                            onChange={(e) =>
-                              setEditFormData({
-                                ...editFormData,
-                                deliveryLocation: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            required
-                          />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Budget
+                        </label>
+                        <input
+                          type="text"
+                          value={editFormData.estimatedSpendRange}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              estimatedSpendRange: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., $10,000 - $15,000"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Urgency
+                        </label>
+                        <div className="space-y-2">
+                          {availableUrgencies.map((urgency) => {
+                            const data = urgencyFees[urgency];
+                            const fee = typeof data === "object" ? data.fee : data;
+                            const duration =
+                              typeof data === "object" ? data.duration : "";
+                            return (
+                              <label
+                                key={urgency}
+                                className="flex items-center gap-3 cursor-pointer"
+                              >
+                                <input
+                                  type="radio"
+                                  name="urgency-edit"
+                                  value={urgency}
+                                  checked={editFormData.urgency === urgency}
+                                  onChange={(e) =>
+                                    setEditFormData({
+                                      ...editFormData,
+                                      urgency: e.target.value,
+                                    })
+                                  }
+                                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-900">
+                                  {urgency.charAt(0).toUpperCase() + urgency.slice(1)}
+                                  {duration && (
+                                    <span className="text-gray-500 ml-2">
+                                      ({duration})
+                                    </span>
+                                  )}
+                                  {fee > 0 && (
+                                    <span className="text-gray-500 ml-2">
+                                      +${fee.toLocaleString()}
+                                    </span>
+                                  )}
+                                </span>
+                              </label>
+                            );
+                          })}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Target Budget
-                          </label>
-                          <input
-                            type="text"
-                            value={editFormData.budget}
-                            onChange={(e) =>
-                              setEditFormData({
-                                ...editFormData,
-                                budget: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Deadline
-                          </label>
-                          <input
-                            type="date"
-                            value={editFormData.deadline}
-                            onChange={(e) =>
-                              setEditFormData({
-                                ...editFormData,
-                                deadline: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                      <div className="pt-4 flex justify-end gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setIsEditing(false)}
-                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Compliance Level
+                        </label>
+                        <select
+                          value={editFormData.complianceLevel}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              complianceLevel: e.target.value as
+                                | "commercial"
+                                | "government"
+                                | "regulated",
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          required
                         >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={updateMutation.isPending}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          {updateMutation.isPending
-                            ? "Saving..."
-                            : "Save Changes"}
-                        </button>
+                          <option value="commercial">Commercial</option>
+                          <option value="government">Government</option>
+                          <option value="regulated">Regulated</option>
+                        </select>
                       </div>
-                    </form>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Delivery Location
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">
+                              Country
+                            </label>
+                            <input
+                              type="text"
+                              value="United States"
+                              disabled
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">
+                              State
+                            </label>
+                            <select
+                              value={editFormData.deliveryLocation}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  deliveryLocation: e.target.value,
+                                })
+                              }
+                              required
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select state</option>
+                              {US_STATES.map((state) => (
+                                <option key={state} value={state}>
+                                  {state}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Internal Deadline
+                        </label>
+                        <DatePicker
+                          value={editFormData.internalDeadline}
+                          onChange={(date) =>
+                            setEditFormData({
+                              ...editFormData,
+                              internalDeadline: date,
+                            })
+                          }
+                          minDate={new Date().toISOString().split("T")[0]}
+                          placeholder="Select deadline date"
+                        />
+                      </div>
                   </div>
-                </div>
+                  <div className="p-6 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0 bg-white rounded-b-xl">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={updateMutation.isPending}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {updateMutation.isPending
+                        ? "Saving..."
+                        : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}
@@ -1497,7 +1889,7 @@ export default function ManagedServiceDetailsPage() {
                     )}
                   </div>
                   <button
-                    onClick={() => setPreviewModal({ isOpen: false, doc: null })}
+                    onClick={closePreview}
                     className="text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <svg
@@ -1516,16 +1908,22 @@ export default function ManagedServiceDetailsPage() {
                   </button>
                 </div>
                 <div className="p-6">
-                  {previewModal.doc.type === "application/pdf" ? (
+                  {previewModal.isLoading ? (
+                    <div className="flex justify-center items-center h-[500px]">
+                      <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+                    </div>
+                  ) : previewModal.doc.type === "application/pdf" &&
+                    previewModal.blobUrl ? (
                     <iframe
-                      src={getFullImageUrl(previewModal.doc.url)}
+                      src={previewModal.blobUrl}
                       className="w-full h-[500px] border border-gray-200 rounded-lg"
                       title="PDF Preview"
                     />
-                  ) : previewModal.doc.type.startsWith("image/") ? (
+                  ) : previewModal.doc.type.startsWith("image/") &&
+                    previewModal.blobUrl ? (
                     <div className="flex justify-center">
                       <img
-                        src={getFullImageUrl(previewModal.doc.url)}
+                        src={previewModal.blobUrl}
                         alt={previewModal.doc.fileName}
                         className="max-w-full max-h-[500px] rounded-lg border border-gray-200"
                       />

@@ -220,7 +220,7 @@ export default function FeedbackPage() {
         <title>Feedback - Optiverifi</title>
       </Head>
       <DashboardLayout>
-        <div className="max-w-6xl mx-auto">
+        <div>
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">

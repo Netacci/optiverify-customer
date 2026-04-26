@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
   createRequest,
@@ -28,6 +28,7 @@ const US_STATES = [
 
 export default function SubmitRequestPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -132,6 +133,9 @@ export default function SubmitRequestPage() {
       }
 
       toast.success("Request created successfully!", { id: "create-request" });
+
+      // Mark requests list as stale so it refetches when the user views /requests
+      queryClient.invalidateQueries({ queryKey: ["userRequests"] });
 
       // Check subscription and credits logic
       const isSubscriptionActive =

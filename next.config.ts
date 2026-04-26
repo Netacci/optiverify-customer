@@ -18,7 +18,8 @@ const csp = [
   `img-src 'self' data: blob: https:`,
   `font-src 'self' data: https://fonts.gstatic.com`,
   `connect-src 'self' https://api.stripe.com https://checkout.stripe.com${isDev ? " ws: wss:" : ""}`,
-  `frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com`,
+ 
+  `frame-src 'self' blob: https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com`,
   `frame-ancestors 'none'`,
   `form-action 'self' https://checkout.stripe.com https://buy.stripe.com`,
   `base-uri 'self'`,

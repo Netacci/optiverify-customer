@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import axios, { AxiosError } from "axios";
@@ -7,8 +7,45 @@ import Head from "next/head";
 
 export default function CheckEmailPage() {
   const router = useRouter();
-  const email = router.query.email as string;
+
+  // Capture email from the URL into component state, then scrub the address
+  // bar so PII does not persist in browser history, server access logs, or
+  // the Referer header on outbound requests. Same pattern Wave 2B1 / preview
+  // funnel applied. We don't persist this in sessionStorage — it's a
+  // terminal page in the flow and the value is only used for display.
+  const [email, setEmail] = useState<string>("");
   const [resending, setResending] = useState(false);
+  // Nuance for messaging: in dev, the Stripe webhook often doesn't fire
+  // (no `stripe listen` running), so the verification email isn't sent on
+  // its own. We auto-trigger a resend on mount as a defense-in-depth so
+  // the user actually receives the email even if the webhook failed.
+  // The backend's resendVerification is rate-limited (authLimiter:
+  // 20/15min) and constant-message anti-enumeration, so calling it on
+  // every page load is safe.
+  const autoSentRef = useRef(false);
+
+  useEffect(() => {
+    if (!router.isReady || autoSentRef.current) return;
+
+    const emailParam =
+      typeof router.query.email === "string" ? router.query.email : null;
+    if (!emailParam) return;
+
+    autoSentRef.current = true;
+    const decoded = decodeURIComponent(emailParam);
+    setEmail(decoded);
+
+    // Scrub PII from the URL.
+    router.replace("/check-email", undefined, { shallow: true });
+
+    // Best-effort auto-resend. Failures are silent (the user can click the
+    // resend button); we don't surface an error toast here since the
+    // primary path is "the webhook already sent it and the user just
+    // doesn't see it yet".
+    axios
+      .post(`/api/auth/resend-verification`, { email: decoded })
+      .catch(() => {});
+  }, [router.isReady, router.query.email, router]);
 
   const handleResend = async () => {
     if (!email) return;
@@ -16,10 +53,7 @@ export default function CheckEmailPage() {
     setResending(true);
 
     try {
-      // Same-origin via Next.js rewrite — /api/* proxies to backend.
-      await axios.post(`/api/auth/resend-verification`, {
-        email,
-      });
+      await axios.post(`/api/auth/resend-verification`, { email });
       toast.success("Verification email resent!");
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -59,13 +93,23 @@ export default function CheckEmailPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Check Your Email
           </h1>
+          <p className="text-gray-600 mb-2">
+            {email ? (
+              <>
+                A verification link is on its way to{" "}
+                <strong>{email}</strong>.
+              </>
+            ) : (
+              <>A verification link is on its way to your inbox.</>
+            )}
+          </p>
           <p className="text-gray-600 mb-6">
-            We&apos;ve sent a verification link to <strong>{email}</strong>.
-            Please check your inbox and click the link to verify your account and
-            set your password.
+            Click the link in the email to verify your account and set your
+            password.
           </p>
           <p className="text-sm text-gray-500 mb-6">
-            Didn&apos;t receive the email? Check your spam folder.
+            Didn&apos;t receive the email within a minute? Check your spam
+            folder, or use the link below.
           </p>
 
           <button
@@ -89,4 +133,3 @@ export default function CheckEmailPage() {
     </>
   );
 }
-

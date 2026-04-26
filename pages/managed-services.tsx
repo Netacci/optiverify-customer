@@ -118,7 +118,7 @@ export default function ManagedServicesListPage() {
         <title>Managed Services - Optiverifi</title>
       </Head>
       <DashboardLayout>
-        <div className="max-w-6xl mx-auto">
+        <div>
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -329,7 +329,7 @@ export default function ManagedServicesListPage() {
                   </h3>
                   <p className="text-sm text-gray-600 text-center mb-6">
                     Are you sure you want to delete the request for{" "}
-                    <strong>"{deleteConfirm.category}"</strong>? This action
+                    <strong>&quot;{deleteConfirm.category}&quot;</strong>? This action
                     cannot be undone.
                   </p>
                   <div className="flex gap-3">

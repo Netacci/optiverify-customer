@@ -53,6 +53,7 @@ export interface RequestsResponse {
 
 export interface Supplier {
   // Identifiers
+  id?: string;
   supplierNumber?: string;
   // Basic
   name: string;

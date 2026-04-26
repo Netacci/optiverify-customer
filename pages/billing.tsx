@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
 import {
   getSubscriptionStatus,
-  updateSubscription,
   getCurrentUser,
   createCheckoutSession,
   syncUserPayments,
@@ -28,6 +27,8 @@ export default function BillingPage() {
   const { data: subscriptionData, refetch } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => getSubscriptionStatus(),
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: userData } = useQuery({
@@ -48,11 +49,8 @@ export default function BillingPage() {
     queryKey: ["creditTransactions", creditTransactionsPage],
     queryFn: () =>
       getCreditTransactions({ page: creditTransactionsPage, limit: 5 }),
-  });
-
-  const { data: plansData } = useQuery({
-    queryKey: ["plans"],
-    queryFn: () => import("@/api/plans").then((m) => m.getPlans()),
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const subscriptionStatus = subscriptionData?.data;
@@ -61,82 +59,9 @@ export default function BillingPage() {
     extraCreditPrice: 10,
   };
 
-  // Build subscription plans from Plans API
-  const SUBSCRIPTION_PLANS = useMemo(() => {
-    const dbPlans = plansData?.data || [];
-    const result: Array<{
-      id: string;
-      name: string;
-      price: string;
-      period: string;
-      description: string;
-    }> = [];
-
-    for (const plan of dbPlans) {
-      if (plan.planType === "starter") {
-        result.push({
-          id: "starter_monthly",
-          name: `${plan.name} Monthly`,
-          price: `$${plan.price}`,
-          period: "/month",
-          description: `${plan.credits} matches per month`,
-        });
-        if (plan.hasAnnualPricing && plan.annualPrice) {
-          result.push({
-            id: "starter_annual",
-            name: `${plan.name} Annual`,
-            price: `$${plan.annualPrice}`,
-            period: "/year",
-            description: `${plan.credits} matches per month`,
-          });
-        }
-      } else if (plan.planType === "professional") {
-        result.push({
-          id: "professional_monthly",
-          name: `${plan.name} Monthly`,
-          price: `$${plan.price}`,
-          period: "/month",
-          description: `${plan.credits} matches per month${
-            plan.maxRolloverCredits
-              ? ` (max ${plan.maxRolloverCredits} credits rollover)`
-              : ""
-          }`,
-        });
-        if (plan.hasAnnualPricing && plan.annualPrice) {
-          result.push({
-            id: "professional_annual",
-            name: `${plan.name} Annual`,
-            price: `$${plan.annualPrice}`,
-            period: "/year",
-            description: `${plan.credits} matches per month${
-              plan.maxRolloverCredits
-                ? ` (max ${plan.maxRolloverCredits} credits rollover)`
-                : ""
-            }`,
-          });
-        }
-      }
-    }
-
-    return result;
-  }, [plansData?.data]);
   const isActiveSubscriber =
     subscriptionStatus?.subscriptionStatus === "active";
   const hasZeroCredits = (subscriptionStatus?.matchCredits || 0) === 0;
-
-  const updateSubscriptionMutation = useMutation({
-    mutationFn: updateSubscription,
-    onSuccess: () => {
-      toast.success("Subscription updated successfully!");
-      refetch();
-    },
-    onError: (error: unknown) => {
-      const err = error as AxiosError<{ message: string }>;
-      const errorMessage =
-        err?.response?.data?.message || "Failed to update subscription";
-      toast.error(errorMessage);
-    },
-  });
 
   const topUpMutation = useMutation({
     mutationFn: createCheckoutSession,
@@ -219,17 +144,6 @@ export default function BillingPage() {
     });
   };
 
-  const handleSwitchPlan = (planType: string) => {
-    if (planType === subscriptionStatus?.planType) {
-      toast("This is already your active plan", { icon: "ℹ️" });
-      return;
-    }
-
-    updateSubscriptionMutation.mutate({
-      planType: planType as "one-time" | "monthly" | "annual" | "enterprise",
-    });
-  };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -267,7 +181,7 @@ export default function BillingPage() {
         <title>Billing - Optiverifi</title>
       </Head>
       <DashboardLayout>
-        <div className="max-w-6xl mx-auto">
+        <div>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Billing & Subscription
@@ -709,90 +623,6 @@ export default function BillingPage() {
           )}
         </div>
 
-        {/* Switch Plan Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Switch Subscription Plan
-            </h2>
-            <p className="text-sm text-gray-600">
-              Change your subscription plan at any time
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {SUBSCRIPTION_PLANS.map(
-              (plan: {
-                id: string;
-                name: string;
-                price: string;
-                period: string;
-                description: string;
-              }) => {
-                const isActive = subscriptionStatus?.planType === plan.id;
-
-                return (
-                  <div
-                    key={plan.id}
-                    className={`rounded-xl border-2 p-6 transition-all ${
-                      isActive
-                        ? "border-blue-500 shadow-lg bg-blue-50"
-                        : "border-gray-200 hover:border-blue-300 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">
-                        {plan.name}
-                      </h3>
-                      <div className="mb-2">
-                        <span className="text-3xl font-extrabold text-gray-900">
-                          {plan.price}
-                        </span>
-                        {plan.period && (
-                          <span className="text-lg text-gray-600 ml-1">
-                            {plan.period}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {plan.description}
-                      </p>
-                    </div>
-
-                    {isActive ? (
-                      <div className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold text-center">
-                        Current Plan
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleSwitchPlan(plan.id)}
-                        disabled={updateSubscriptionMutation.isPending}
-                        className="w-full px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {updateSubscriptionMutation.isPending
-                          ? "Switching..."
-                          : "Switch to This Plan"}
-                      </button>
-                    )}
-                  </div>
-                );
-              }
-            )}
-          </div>
-
-          <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
-            <p className="text-sm text-gray-600">
-              Looking for a single match unlock? Visit{" "}
-              <Link
-                href="/payment-plans"
-                className="text-blue-600 hover:underline"
-              >
-                Payment Plans
-              </Link>
-              .
-            </p>
-          </div>
-        </div>
       </div>
     </DashboardLayout>
     </>

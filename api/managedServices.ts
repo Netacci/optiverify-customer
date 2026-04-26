@@ -40,11 +40,14 @@ export interface ManagedService {
   id?: string; // Sometimes returned as id or _id
   itemName: string;
   category: string;
+  subCategory?: string;
   description: string;
+  estimatedSpendRange?: string;
   complianceLevel: "commercial" | "government" | "regulated";
   specifications: string;
   quantity: string;
   deliveryLocation: string;
+  internalDeadline?: string;
   budget?: string;
   deadline?: string;
   status: string;

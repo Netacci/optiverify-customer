@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -17,214 +17,6 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { generateMatchReportPDF } from "@/utils/generatePDF";
 import Head from "next/head";
-
-// ─── Supplier Detail Modal ───────────────────────────────────────────────────
-
-function SupplierDetailModal({
-  supplier,
-  onClose,
-}: {
-  supplier: Supplier;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-xl font-bold text-gray-900">{supplier.name}</h2>
-              {supplier.ranking && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-                  Rank #{supplier.ranking}
-                </span>
-              )}
-              {supplier.verified && (
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                  Verified
-                </span>
-              )}
-            </div>
-            {supplier.supplierNumber && (
-              <p className="text-sm text-gray-500">{supplier.supplierNumber}</p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-900 ml-4 flex-shrink-0"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Match Score + Why They Match */}
-          {supplier.matchScore !== undefined && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-gray-700">Match Score</span>
-                <span className="text-2xl font-bold text-blue-600">{supplier.matchScore}%</span>
-              </div>
-              {supplier.aiExplanation && (
-                <p className="text-sm text-gray-700 leading-relaxed">{supplier.aiExplanation}</p>
-              )}
-            </div>
-          )}
-
-          {/* Contact Information */}
-          <Section title="Contact Information">
-            <Grid2>
-              <Field label="Contact Name" value={supplier.contactName} />
-              <Field label="Email" value={supplier.email} href={`mailto:${supplier.email}`} />
-              <Field label="Phone" value={supplier.phone} href={`tel:${supplier.phone}`} />
-              <Field label="Website" value={supplier.website} href={supplier.website} external />
-            </Grid2>
-          </Section>
-
-          {/* Location */}
-          <Section title="Location">
-            <Grid2>
-              <Field label="State / Region" value={supplier.stateRegion} />
-              <Field label="City" value={supplier.city} />
-              <Field label="Country" value={supplier.country} />
-            </Grid2>
-          </Section>
-
-          {/* Category */}
-          <Section title="Category">
-            <Grid2>
-              <Field label="Category" value={supplier.category} />
-              <Field label="Subcategory" value={supplier.subCategory} />
-              <Field label="Industry" value={supplier.industry} />
-              <Field label="Diversity Type" value={supplier.diversityType} />
-            </Grid2>
-          </Section>
-
-          {/* Capabilities */}
-          {supplier.capabilities && supplier.capabilities.length > 0 && (
-            <Section title="Capabilities">
-              <div className="flex flex-wrap gap-2">
-                {supplier.capabilities.map((cap, i) => (
-                  <span key={i} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
-                    {cap}
-                  </span>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {/* Certifications */}
-          {supplier.certifications && supplier.certifications.length > 0 && (
-            <Section title="Certifications">
-              <div className="flex flex-wrap gap-2">
-                {supplier.certifications.map((cert, i) => (
-                  <span key={i} className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-medium">
-                    {cert}
-                  </span>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {/* Order & Capacity */}
-          <Section title="Order & Capacity">
-            <Grid2>
-              <Field label="Min Order Quantity" value={supplier.minOrderQuantity} />
-              <Field label="Lead Time" value={supplier.leadTime} />
-            </Grid2>
-          </Section>
-
-          {/* Verification & Risk */}
-          <Section title="Verification & Risk">
-            <Grid2>
-              <Field label="Reliability" value={supplier.reliability} />
-              <Field label="Risk Flags" value={supplier.riskFlags} />
-              <Field label="Data Source" value={supplier.dataSource} />
-              <Field
-                label="Last Verified"
-                value={
-                  supplier.lastVerifiedDate !== undefined &&
-                  supplier.lastVerifiedDate !== null
-                    ? String(supplier.lastVerifiedDate)
-                    : undefined
-                }
-              />
-            </Grid2>
-          </Section>
-
-          {/* Internal Notes */}
-          {supplier.internalNotes && (
-            <Section title="Internal Notes">
-              <p className="text-sm text-gray-700 leading-relaxed bg-yellow-50 border border-yellow-100 rounded-lg p-3">
-                {supplier.internalNotes}
-              </p>
-            </Section>
-          )}
-
-          {/* Buyer Match Recommendation */}
-          {supplier.buyerMatchRecommendation && (
-            <Section title="Match Recommendation">
-              <p className="text-sm text-gray-700 leading-relaxed">{supplier.buyerMatchRecommendation}</p>
-            </Section>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function Grid2({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>;
-}
-
-function Field({
-  label,
-  value,
-  href,
-  external,
-}: {
-  label: string;
-  value?: string | null;
-  href?: string;
-  external?: boolean;
-}) {
-  if (!value) return null;
-  return (
-    <div>
-      <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
-      {href ? (
-        <a
-          href={href}
-          target={external ? "_blank" : undefined}
-          rel={external ? "noopener noreferrer" : undefined}
-          className="text-sm font-medium text-blue-600 hover:text-blue-700 break-all"
-        >
-          {value}
-        </a>
-      ) : (
-        <p className="text-sm font-medium text-gray-900 break-words">{value}</p>
-      )}
-    </div>
-  );
-}
 
 export default function RequestDetailsPage() {
   const router = useRouter();
@@ -263,7 +55,6 @@ export default function RequestDetailsPage() {
 
   // State to track if we are currently verifying payment to hide unlock button
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
   // Sync payment status if redirecting from successful payment
   useEffect(() => {
@@ -339,7 +130,7 @@ export default function RequestDetailsPage() {
   const generateMatchMutation = useMutation({
     mutationFn: () => generateAIMatch(requestId),
     onSuccess: () => {
-      toast.success("AI match generated successfully!");
+      toast.success("Report generated successfully!");
       refetchRequest();
     },
     onError: (err) => {
@@ -349,6 +140,25 @@ export default function RequestDetailsPage() {
       );
     },
   });
+
+  // Auto-fire the AI match the moment the report flips to "unlocked" (i.e.
+  // payment cleared but the AI prose hasn't run yet). Replaces the old
+  // "Generate AI Match" button — the user just sees a loader.
+  // `firedRef` guards against re-firing across re-renders/refetches; the
+  // mutation already has its own `isPending` flag but the ref makes the
+  // intent explicit.
+  const generateFiredRef = useRef(false);
+  useEffect(() => {
+    if (
+      isUnlocked &&
+      !generateFiredRef.current &&
+      !generateMatchMutation.isPending &&
+      !generateMatchMutation.isSuccess
+    ) {
+      generateFiredRef.current = true;
+      generateMatchMutation.mutate();
+    }
+  }, [isUnlocked, generateMatchMutation]);
 
   const handlePayUnlock = () => {
     if (!user?.email) {
@@ -483,48 +293,93 @@ export default function RequestDetailsPage() {
                     )}
                   </>
                 ) : isUnlocked ? (
-                  <>
-                    <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                      <svg
-                        className="w-10 h-10 text-blue-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13 10V3L4 14h7v7l9-11h-7z"
-                        />
-                      </svg>
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      Generate AI Match
-                    </h2>
-                    <p className="text-gray-600 max-w-md mb-8">
-                      Your payment has been processed. Click the button below to
-                      generate your AI-powered match report with detailed supplier
-                      analysis.
-                    </p>
+                  generateMatchMutation.isError ? (
+                  
+                    <>
+                      <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                        <svg
+                          className="w-10 h-10 text-red-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"
+                          />
+                        </svg>
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        We couldn&apos;t load your report
+                      </h2>
+                      <p className="text-gray-600 max-w-md mb-8">
+                        {(() => {
+                          const e = generateMatchMutation.error as
+                            | AxiosError<{ message?: string }>
+                            | undefined;
+                          return (
+                            e?.response?.data?.message ||
+                            e?.message ||
+                            "Something went wrong while generating your match. Your payment is safe and you can retry."
+                          );
+                        })()}
+                      </p>
 
-                    <div className="grid gap-4 w-full max-w-sm">
-                      {!generateMatchMutation.isPending && (
+                      <div className="grid gap-3 w-full max-w-sm">
                         <button
                           onClick={() => generateMatchMutation.mutate()}
-                          className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                          disabled={generateMatchMutation.isPending}
+                          className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                          Generate AI Match
+                          {generateMatchMutation.isPending ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Retrying...
+                            </>
+                          ) : (
+                            "Retry"
+                          )}
                         </button>
-                      )}
-                      {generateMatchMutation.isPending && (
+                        <button
+                          onClick={() => refetchRequest()}
+                          className="w-full py-3 px-6 bg-white text-gray-700 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                        >
+                          Refresh page state
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-gray-400 mt-6 max-w-md">
+                        If retrying keeps failing, contact support with your
+                        request ID. You won&apos;t be charged again.
+                      </p>
+                    </>
+                  ) : (
+                    /*
+                      Auto-trigger view. AI match runs automatically via the
+                      useEffect above the moment status === "unlocked"; the
+                      user just sees a loader.
+                    */
+                    <>
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        Getting your report ready
+                      </h2>
+                      <p className="text-gray-600 max-w-md mb-8">
+                        Just a moment while we load your match report.
+                      </p>
+
+                      <div className="grid gap-4 w-full max-w-sm">
                         <div className="w-full py-3 px-6 bg-gray-100 text-gray-500 rounded-lg font-semibold flex items-center justify-center gap-2">
                           <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
-                          Generating AI Match...
+                          Loading report...
                         </div>
-                      )}
-                    </div>
-                  </>
+                      </div>
+                    </>
+                  )
                 ) : (
                   <>
                     <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
@@ -960,9 +815,13 @@ export default function RequestDetailsPage() {
                   <tbody className="divide-y divide-gray-100">
                     {suppliers.map((supplier: Supplier, index: number) => (
                       <tr
-                        key={index}
-                        className="hover:bg-blue-50 cursor-pointer transition-colors"
-                        onClick={() => setSelectedSupplier(supplier)}
+                        key={supplier.id ?? index}
+                        className={`transition-colors ${supplier.id ? "hover:bg-blue-50 cursor-pointer" : ""}`}
+                        onClick={() => {
+                          if (supplier.id) {
+                            router.push(`/requests/${requestId}/suppliers/${supplier.id}`);
+                          }
+                        }}
                       >
                         <td className="px-4 py-4">
                           <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
@@ -1012,12 +871,17 @@ export default function RequestDetailsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <button
-                            className="px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors whitespace-nowrap"
-                            onClick={(e) => { e.stopPropagation(); setSelectedSupplier(supplier); }}
-                          >
-                            View
-                          </button>
+                          {supplier.id ? (
+                            <Link
+                              href={`/requests/${requestId}/suppliers/${supplier.id}`}
+                              className="inline-block px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors whitespace-nowrap"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1027,14 +891,6 @@ export default function RequestDetailsPage() {
                   Click a row to view full supplier details
                 </p>
               </div>
-            )}
-
-            {/* Supplier Detail Modal */}
-            {selectedSupplier && (
-              <SupplierDetailModal
-                supplier={selectedSupplier}
-                onClose={() => setSelectedSupplier(null)}
-              />
             )}
           </div>
         </div>

@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getRequests,
   getManagedServices,
-  Request,
   ManagedService,
 } from "@/api";
 import Link from "next/link";
@@ -26,13 +25,6 @@ export default function DashboardPage() {
     ? data.data.requests
     : [];
   const totalRequests = requests.length;
-  const unlockedRequests = requests.filter(
-    (r: Request) => r.status === "unlocked" || r.status === "completed"
-  ).length;
-  const totalSuppliers = requests.reduce(
-    (sum: number, r: Request) => sum + (r.matchedCount || 0),
-    0
-  );
 
   // Managed Services Analytics
   const managedServices = Array.isArray(managedServicesData?.data)
@@ -75,27 +67,31 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-6">
               {/* Key Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link
+                  href="/requests"
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-sm transition-all"
+                >
                   <p className="text-sm text-gray-500">Total Requests</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">{totalRequests}</p>
                   <p className="text-xs text-gray-400 mt-1">Supplier matching</p>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
-                  <p className="text-sm text-gray-500">Unlocked Matches</p>
-                  <p className="text-3xl font-bold text-green-600 mt-1">{unlockedRequests}</p>
-                  <p className="text-xs text-gray-400 mt-1">{totalSuppliers} suppliers found</p>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                </Link>
+                <Link
+                  href="/managed-services"
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-sm transition-all"
+                >
                   <p className="text-sm text-gray-500">Managed Services</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">{totalManagedServices}</p>
                   <p className="text-xs text-gray-400 mt-1">Total submitted</p>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                </Link>
+                <Link
+                  href="/managed-services"
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-sm transition-all"
+                >
                   <p className="text-sm text-gray-500">Active Services</p>
                   <p className="text-3xl font-bold text-blue-600 mt-1">{activeManagedServices}</p>
                   <p className="text-xs text-gray-400 mt-1">Currently in progress</p>
-                </div>
+                </Link>
               </div>
 
               {/* Service Cards */}

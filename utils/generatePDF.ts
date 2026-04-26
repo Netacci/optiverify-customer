@@ -756,3 +756,381 @@ export async function generateReceiptPDF(receipt: ReceiptData) {
     .createPdf(docDefinition)
     .download(`receipt-optiverifi-${dateStr}.pdf`);
 }
+
+interface ManagedServiceReportSupplier {
+  supplierName?: string;
+  location?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  quoteAmount?: number;
+  negotiatedAmount?: number;
+  currency?: string;
+  leadTime?: string;
+  minimumOrderQuantity?: string;
+  notes?: string;
+  isRecommended?: boolean;
+}
+
+interface ManagedServiceReportRequest {
+  itemName?: string;
+  category?: string;
+  subCategory?: string;
+  description?: string;
+  specifications?: string;
+  quantity?: string;
+  estimatedSpendRange?: string;
+  budget?: string;
+  urgency?: string;
+  urgencyDuration?: string;
+  complianceLevel?: string;
+  deliveryLocation?: string;
+  internalDeadline?: string;
+  deadline?: string;
+  serviceFeeAmount?: number;
+  savingsAmount?: number;
+  finalReport?: {
+    reportGeneratedAt?: string;
+    summary?: string;
+    recommendations?: string;
+    additionalNotes?: string;
+    supplierDetails?: ManagedServiceReportSupplier[];
+  };
+}
+
+export async function generateManagedServiceReportPDF(
+  request: ManagedServiceReportRequest,
+) {
+  await loadFonts();
+
+  const finalReport = request.finalReport || {};
+  const suppliers = finalReport.supplierDetails || [];
+  const description = request.description || request.specifications;
+  const spend = request.estimatedSpendRange || request.budget;
+  const deadline = request.internalDeadline || request.deadline;
+
+  const docDefinition: any = {
+    watermark: {
+      text: "optiverifi",
+      color: "#e0e0e0",
+      opacity: 0.1,
+      bold: true,
+      italics: false,
+      fontSize: 60,
+    },
+    pageSize: "A4",
+    pageMargins: [40, 60, 40, 60],
+    defaultStyle: {
+      font: "Roboto",
+      fontSize: 10,
+      lineHeight: 1.4,
+    },
+    header: {
+      margin: [40, 20, 40, 0],
+      columns: [
+        {
+          text: "Final Sourcing Report",
+          fontSize: 24,
+          bold: true,
+          color: "#1f2937",
+        },
+        {
+          text: finalReport.reportGeneratedAt
+            ? new Date(finalReport.reportGeneratedAt).toLocaleDateString(
+                "en-US",
+                { year: "numeric", month: "long", day: "numeric" },
+              )
+            : new Date().toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }),
+          fontSize: 10,
+          color: "#6b7280",
+          alignment: "right",
+        },
+      ],
+    },
+    content: [
+      // Request Summary
+      {
+        text: "Request Summary",
+        style: "sectionHeader",
+        margin: [0, 0, 0, 12],
+      },
+      {
+        columns: [
+          {
+            width: "*",
+            stack: [
+              request.itemName && {
+                text: [{ text: "Item Name: ", bold: true }, request.itemName],
+                margin: [0, 0, 0, 6],
+              },
+              request.category && {
+                text: [
+                  { text: "Category: ", bold: true },
+                  request.subCategory
+                    ? `${request.category} > ${request.subCategory}`
+                    : request.category,
+                ],
+                margin: [0, 0, 0, 6],
+              },
+              request.quantity && {
+                text: [
+                  { text: "Quantity: ", bold: true },
+                  request.quantity,
+                ],
+                margin: [0, 0, 0, 6],
+              },
+              spend && {
+                text: [
+                  { text: "Estimated Spend Range: ", bold: true },
+                  spend,
+                ],
+                margin: [0, 0, 0, 6],
+              },
+            ].filter(Boolean),
+          },
+          {
+            width: "*",
+            stack: [
+              request.urgency && {
+                text: [
+                  { text: "Urgency: ", bold: true },
+                  request.urgencyDuration
+                    ? `${request.urgency} (${request.urgencyDuration})`
+                    : request.urgency,
+                ],
+                margin: [0, 0, 0, 6],
+              },
+              request.complianceLevel && {
+                text: [
+                  { text: "Compliance Level: ", bold: true },
+                  request.complianceLevel,
+                ],
+                margin: [0, 0, 0, 6],
+              },
+              request.deliveryLocation && {
+                text: [
+                  { text: "Delivery Location: ", bold: true },
+                  request.deliveryLocation,
+                ],
+                margin: [0, 0, 0, 6],
+              },
+              deadline && {
+                text: [
+                  { text: "Internal Deadline: ", bold: true },
+                  new Date(deadline).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }),
+                ],
+                margin: [0, 0, 0, 6],
+              },
+            ].filter(Boolean),
+          },
+        ],
+        margin: [0, 0, 0, 12],
+      },
+      ...(description
+        ? [
+            {
+              stack: [
+                { text: "Description", bold: true, margin: [0, 0, 0, 4] },
+                { text: description, margin: [0, 0, 0, 16] },
+              ],
+            },
+          ]
+        : []),
+      // Summary
+      ...(finalReport.summary
+        ? [
+            {
+              text: "Summary",
+              style: "sectionHeader",
+              margin: [0, 8, 0, 8],
+            },
+            {
+              text: finalReport.summary,
+              margin: [0, 0, 0, 16],
+            },
+          ]
+        : []),
+      // Recommendations
+      ...(finalReport.recommendations
+        ? [
+            {
+              text: "Recommendations",
+              style: "sectionHeader",
+              margin: [0, 8, 0, 8],
+            },
+            {
+              text: finalReport.recommendations,
+              margin: [0, 0, 0, 16],
+            },
+          ]
+        : []),
+      // Suppliers
+      ...(suppliers.length > 0
+        ? [
+            {
+              text: "Supplier Details",
+              style: "sectionHeader",
+              margin: [0, 8, 0, 12],
+            },
+            ...suppliers.map((supplier, index) => ({
+              stack: [
+                {
+                  columns: [
+                    {
+                      width: "*",
+                      text: `${index + 1}. ${supplier.supplierName || `Supplier ${index + 1}`}`,
+                      style: "supplierName",
+                    },
+                    supplier.isRecommended && {
+                      width: "auto",
+                      text: "RECOMMENDED",
+                      fontSize: 9,
+                      bold: true,
+                      color: "#1d4ed8",
+                      alignment: "right",
+                    },
+                  ].filter(Boolean),
+                  margin: [0, 0, 0, 8],
+                },
+                {
+                  columns: [
+                    {
+                      width: "*",
+                      stack: [
+                        supplier.location && {
+                          text: [
+                            { text: "Location: ", bold: true },
+                            supplier.location,
+                          ],
+                          margin: [0, 0, 0, 4],
+                        },
+                        supplier.contactEmail && {
+                          text: [
+                            { text: "Email: ", bold: true },
+                            supplier.contactEmail,
+                          ],
+                          margin: [0, 0, 0, 4],
+                        },
+                        supplier.contactPhone && {
+                          text: [
+                            { text: "Phone: ", bold: true },
+                            supplier.contactPhone,
+                          ],
+                          margin: [0, 0, 0, 4],
+                        },
+                      ].filter(Boolean),
+                    },
+                    {
+                      width: "*",
+                      stack: [
+                        (supplier.quoteAmount ?? 0) > 0 && {
+                          text: [
+                            { text: "Quote Amount: ", bold: true },
+                            `$${supplier.quoteAmount!.toLocaleString()} ${supplier.currency || "USD"}`,
+                          ],
+                          margin: [0, 0, 0, 4],
+                        },
+                        (supplier.negotiatedAmount ?? 0) > 0 && {
+                          text: [
+                            { text: "Negotiated Amount: ", bold: true },
+                            `$${supplier.negotiatedAmount!.toLocaleString()} ${supplier.currency || "USD"}`,
+                          ],
+                          margin: [0, 0, 0, 4],
+                        },
+                        supplier.leadTime && {
+                          text: [
+                            { text: "Lead Time: ", bold: true },
+                            supplier.leadTime,
+                          ],
+                          margin: [0, 0, 0, 4],
+                        },
+                        supplier.minimumOrderQuantity && {
+                          text: [
+                            { text: "Min Order: ", bold: true },
+                            supplier.minimumOrderQuantity,
+                          ],
+                          margin: [0, 0, 0, 4],
+                        },
+                      ].filter(Boolean),
+                    },
+                  ],
+                  margin: [0, 0, 0, 6],
+                },
+                supplier.notes && {
+                  text: [{ text: "Notes: ", bold: true }, supplier.notes],
+                  margin: [0, 0, 0, 6],
+                },
+                {
+                  canvas: [
+                    {
+                      type: "line",
+                      x1: 0,
+                      y1: 0,
+                      x2: 515,
+                      y2: 0,
+                      lineWidth: 0.5,
+                      lineColor: "#e5e7eb",
+                    },
+                  ],
+                  margin: [0, 8, 0, 12],
+                },
+              ].filter(Boolean),
+            })),
+          ]
+        : []),
+      // Additional Notes
+      ...(finalReport.additionalNotes
+        ? [
+            {
+              text: "Additional Notes",
+              style: "sectionHeader",
+              margin: [0, 8, 0, 8],
+            },
+            {
+              text: finalReport.additionalNotes,
+              margin: [0, 0, 0, 16],
+            },
+          ]
+        : []),
+      // Footer
+      {
+        text: "Generated by Optiverifi",
+        fontSize: 8,
+        color: "#9ca3af",
+        alignment: "center",
+        margin: [0, 20, 0, 0],
+        italics: true,
+      },
+    ],
+    styles: {
+      sectionHeader: {
+        fontSize: 16,
+        bold: true,
+        color: "#1f2937",
+      },
+      supplierName: {
+        fontSize: 14,
+        bold: true,
+        color: "#111827",
+      },
+    },
+  };
+
+  const dateStr = new Date().toISOString().split("T")[0];
+  const slug = (request.itemName || "report")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "report";
+
+  pdfMake
+    .createPdf(docDefinition)
+    .download(`managed-sourcing-report-${slug}-${dateStr}.pdf`);
+}

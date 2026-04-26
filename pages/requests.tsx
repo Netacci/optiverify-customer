@@ -199,8 +199,9 @@ export default function RequestsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {/* Only show match results when AI matching is complete (completed), not when unlocked or pending */}
-                          {request.matchReportStatus === "completed" ? (
+                          {/* Score is rule-based and computed at preview time,
+                              so show it whenever the report exists. */}
+                          {(request.matchedCount ?? 0) > 0 ? (
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <svg
                                 className="w-4 h-4"
@@ -216,7 +217,7 @@ export default function RequestsPage() {
                                 />
                               </svg>
                               <span className="font-medium">
-                                {request.matchedCount || 0}
+                                {request.matchedCount}
                               </span>
                             </div>
                           ) : (
@@ -224,8 +225,9 @@ export default function RequestsPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {/* Only show match results when AI matching is complete (completed), not when unlocked or pending */}
-                          {request.matchReportStatus === "completed" ? (
+                          {/* Score is rule-based and computed at preview time,
+                              so show it whenever the report exists. */}
+                          {(request.matchScore ?? 0) > 0 ? (
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <svg
                                 className="w-4 h-4"
@@ -241,7 +243,7 @@ export default function RequestsPage() {
                                 />
                               </svg>
                               <span className="font-medium">
-                                {request.matchScore || 0}%
+                                {request.matchScore}%
                               </span>
                             </div>
                           ) : (
