@@ -124,6 +124,18 @@ export default function SupplierDetailPage() {
             </div>
           )}
 
+          {/* Positioning */}
+          {supplier.positioning && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Positioning
+              </h2>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {supplier.positioning}
+              </p>
+            </div>
+          )}
+
           {/* Two-column body */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card title="Contact Information">
@@ -189,6 +201,21 @@ export default function SupplierDetailPage() {
                       className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-medium"
                     >
                       {cert}
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {supplier.tags && supplier.tags.length > 0 && (
+              <Card title="Tags">
+                <div className="flex flex-wrap gap-2">
+                  {supplier.tags.map((tag, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-sm font-medium"
+                    >
+                      {tag}
                     </span>
                   ))}
                 </div>

@@ -75,6 +75,8 @@ export interface Supplier {
   // Products & Services
   capabilities?: string[];
   description?: string;
+  tags?: string[];
+  positioning?: string;
   // Order & Capacity
   minOrderQuantity?: string;
   leadTime?: string;
