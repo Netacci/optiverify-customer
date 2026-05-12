@@ -171,8 +171,18 @@ export default function SubmitRequestPage() {
       // User has active subscription and credits, process matching
       toast.loading("Finding matching suppliers...", { id: "matching" });
       try {
-        await matchMutation.mutateAsync(String(requestId));
-        toast.success("Suppliers matched successfully!", { id: "matching" });
+        const matchResp = await matchMutation.mutateAsync(String(requestId));
+        // Matching redesign: backend may return status: "no_matches" when
+        // every category-matched supplier scored below the threshold.
+        // Don't claim success — let the report page render the CTA.
+        if (matchResp?.data?.status === "no_matches") {
+          toast(
+            "No strong matches in our network for this product.",
+            { id: "matching", icon: "🤷", duration: 3500 }
+          );
+        } else {
+          toast.success("Suppliers matched successfully!", { id: "matching" });
+        }
         router.push(`/requests/${requestId}`);
       } catch (matchError: unknown) {
         // Check if payment is required (shouldn't happen if subscription is active, but handle it)

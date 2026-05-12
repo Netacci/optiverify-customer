@@ -31,11 +31,20 @@ export interface MatchResponse {
     requestId: string;
     matchReportId?: string;
     isUnlocked?: boolean;
+    // AI matching pipeline fields (set when MATCH_SCORER=ai on backend).
+    // status="no_matches" means nothing scored above threshold — frontend
+    // should render the managed-services CTA, not the normal preview.
+    status?: "completed" | "no_matches";
+    candidateCount?: number;
+    matchedCount?: number;
+    requestSummary?: string;
+    suggestedAction?: "managed_services";
     preview?: {
       summary: string;
       category: string;
       matchedCount: number;
       matchScore: number;
+      message?: string;
     };
   };
 }

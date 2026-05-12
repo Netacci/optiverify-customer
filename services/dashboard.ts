@@ -99,6 +99,11 @@ export interface Supplier {
   aiExplanation?: string;
   strengths?: string[];
   concerns?: string[];
+  // AI matching fields (matching redesign — null on legacy rule-based reports)
+  fitScore?: number | null;
+  reason?: string | null;
+  meetsMoq?: boolean | null;
+  meetsCompliance?: boolean | null;
 }
 
 export interface RequestDetailsResponse {
@@ -107,9 +112,14 @@ export interface RequestDetailsResponse {
     request: RequestDetails;
     suppliers: Supplier[];
     isLocked?: boolean;
+    // Possible values: 'pending' | 'pending_payment' | 'completed' | 'unlocked'
+    // | 'no_matches' (matching redesign).
     status?: string;
     matchReportStatus?: string;
     generatedAt?: string;
+    // Matching redesign — populated when matchReportStatus === 'no_matches'
+    requestSummary?: string | null;
+    suggestedAction?: "managed_services";
   };
 }
 
