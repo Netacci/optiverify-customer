@@ -617,7 +617,7 @@ export default function NewManagedServicePage() {
                 </div>
                 <p className="text-blue-800 text-sm">
                   This fee covers our initial research, supplier verification,
-                  and RFQ preparation.
+                  and RFQ/RFP preparation.
                 </p>
               </div>
 

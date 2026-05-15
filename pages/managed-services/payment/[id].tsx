@@ -118,7 +118,7 @@ export default function ManagedServicePaymentPage() {
             </div>
             <p className="text-sm text-gray-600">
               This fee covers our initial research, supplier verification, and
-              RFQ preparation.
+              RFQ/RFP preparation.
             </p>
           </div>
 

@@ -55,7 +55,7 @@ interface UploadedDocument {
 
 const STAGES = [
   { id: "review", label: "Project Review" },
-  { id: "rfq_prep", label: "RFQ Preparation" },
+  { id: "rfq_prep", label: "RFQ/RFP Preparation" },
   { id: "supplier_outreach", label: "Supplier Outreach" },
   { id: "collecting_quotes", label: "Collecting Quotes" },
   { id: "negotiating", label: "Negotiating Terms" },
