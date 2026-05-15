@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
@@ -49,30 +49,31 @@ export default function FeedbackPage() {
   // Reply State
   const [replyMessage, setReplyMessage] = useState("");
 
-  // Initial Check for Params
-  useEffect(() => {
-    if (!router.isReady) return;
-    
+  // Initialize form from URL query params (one-time, when router becomes ready).
+  // Uses the "adjust state during render" pattern instead of useEffect to avoid
+  // cascading renders — React bails out and applies the new state immediately.
+  const [didInitFromQuery, setDidInitFromQuery] = useState(false);
+  if (router.isReady && !didInitFromQuery) {
+    setDidInitFromQuery(true);
     const type = router.query.type as string;
     const requestId = router.query.requestId as string;
     const matchingServiceId = router.query.matchingServiceId as string;
 
     if (
-      type &&
-      (type === "request" ||
-        type === "matching_service" ||
-        type === "general" ||
-        type === "billing")
+      type === "request" ||
+      type === "matching_service" ||
+      type === "general" ||
+      type === "billing"
     ) {
       setFormData((prev) => ({
         ...prev,
-        type: type as FeedbackType,
+        type,
         requestId: requestId || prev.requestId,
         matchingServiceId: matchingServiceId || prev.matchingServiceId,
       }));
       setView("new");
     }
-  }, [router.isReady, router.query]);
+  }
 
   // Fetch Feedback List
   const { data: feedbackData, isLoading } = useQuery({
@@ -438,7 +439,7 @@ export default function FeedbackPage() {
                       >
                         <option value="general">General</option>
                         <option value="request">Request</option>
-                        <option value="matching_service">Matching Service</option>
+                        <option value="matching_service">Managed Service</option>
                         <option value="billing">Billing & Payments</option>
                       </select>
                     </div>
