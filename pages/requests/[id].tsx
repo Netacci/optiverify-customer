@@ -55,6 +55,9 @@ export default function RequestDetailsPage() {
   // Matching redesign — when AI scored everyone but nothing cleared the
   // threshold, render the managed-services CTA instead of a normal report.
   const isNoMatches = matchReportStatus === "no_matches";
+  // Matching redesign — AI Call 1 failed after retries (or hard cost cap).
+  // Render an error state with a Retry button instead of stale/fallback data.
+  const isFailed = matchReportStatus === "failed";
   const requestSummary = data?.data?.requestSummary;
 
   // State to track if we are currently verifying payment to hide unlock button
@@ -469,6 +472,77 @@ export default function RequestDetailsPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        </DashboardLayout>
+      </>
+    );
+  }
+
+  // Failed state (matching redesign): AI Call 1 errored after retries OR
+  // daily hard cost cap was tripped. Show an error UI with a Retry button
+  // that re-triggers /generate-match → processMatchingAi (which retries
+  // Call 1 internally). NOT the same as no_matches — matching wasn't
+  // completed, vs completed-with-zero-matches.
+  if (isFailed) {
+    return (
+      <>
+        <Head>
+          <title>Matching Failed - Optiverifi</title>
+        </Head>
+        <DashboardLayout>
+          <div className="max-w-3xl mx-auto py-12 px-4">
+            <Link
+              href="/requests"
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8"
+            >
+              <span>&larr; Back to Requests</span>
+            </Link>
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-10 text-center">
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg
+                  className="w-10 h-10 text-red-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"
+                  />
+                </svg>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+                We couldn&apos;t generate your matches
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto mb-8">
+                Our matching service is temporarily unavailable. Your request
+                and payment are saved — please retry in a moment.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={() => generateMatchMutation.mutate()}
+                  disabled={generateMatchMutation.isPending}
+                  className="inline-flex items-center justify-center gap-2 py-3 px-6 sm:px-8 bg-blue-600 text-white rounded-xl font-semibold text-sm sm:text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generateMatchMutation.isPending ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Retrying...
+                    </>
+                  ) : (
+                    <>Retry matching</>
+                  )}
+                </button>
+                <Link
+                  href={`/managed-services?fromRequest=${requestId}`}
+                  className="inline-flex items-center justify-center gap-2 py-3 px-6 sm:px-8 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm sm:text-base hover:bg-gray-50 transition-colors"
+                >
+                  Or request managed sourcing
+                </Link>
               </div>
             </div>
           </div>

@@ -113,13 +113,14 @@ export interface RequestDetailsResponse {
     suppliers: Supplier[];
     isLocked?: boolean;
     // Possible values: 'pending' | 'pending_payment' | 'completed' | 'unlocked'
-    // | 'no_matches' (matching redesign).
+    // | 'no_matches' | 'failed' (matching redesign).
     status?: string;
     matchReportStatus?: string;
     generatedAt?: string;
     // Matching redesign — populated when matchReportStatus === 'no_matches'
+    // or 'failed'.
     requestSummary?: string | null;
-    suggestedAction?: "managed_services";
+    suggestedAction?: "managed_services" | "retry";
   };
 }
 
