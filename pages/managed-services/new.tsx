@@ -76,6 +76,7 @@ export default function NewManagedServicePage() {
   const requestIdStr = requestId as string | undefined;
   const [step, setStep] = useState(1);
   const [agreed, setAgreed] = useState(false);
+  const [isOtherCategory, setIsOtherCategory] = useState(false);
 
   // Fetch request details if requestId is provided
   const { data: requestData } = useQuery({
@@ -230,6 +231,19 @@ export default function NewManagedServicePage() {
     }));
   };
 
+  const handleCategoryChange = (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const { value } = e.target;
+    if (value === "__OTHER__") {
+      setIsOtherCategory(true);
+      setFormData((prev) => ({ ...prev, category: "", subCategory: "" }));
+    } else {
+      setIsOtherCategory(false);
+      setFormData((prev) => ({ ...prev, category: value, subCategory: "" }));
+    }
+  };
+
   const handleNext = () => {
     if (step === 1) {
       if (
@@ -363,8 +377,8 @@ export default function NewManagedServicePage() {
                   </label>
                   <select
                     name="category"
-                    value={formData.category}
-                    onChange={handleChange}
+                    value={isOtherCategory ? "__OTHER__" : formData.category}
+                    onChange={handleCategoryChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     required
                   >
@@ -374,7 +388,23 @@ export default function NewManagedServicePage() {
                         {cat.name}
                       </option>
                     ))}
+                    <option value="__OTHER__">Other</option>
                   </select>
+                  {isOtherCategory && (
+                    <input
+                      type="text"
+                      value={formData.category}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          category: e.target.value,
+                        }))
+                      }
+                      className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
+                      placeholder="Enter your category"
+                      required
+                    />
+                  )}
                 </div>
 
                 {subcategories.length > 0 && (
