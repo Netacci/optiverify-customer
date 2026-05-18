@@ -32,7 +32,7 @@ const US_STATES = [
 
 // Pricing calculation function (matches backend logic)
 const calculatePrice = (
-  categoryGrade: "low" | "medium" | "high" | undefined,
+  categoryGrade: "low" | "medium" | "high" | "default" | undefined,
   urgency: string,
   settings?: {
     gradePrices?: { [key: string]: number };
