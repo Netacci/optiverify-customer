@@ -190,10 +190,12 @@ export default function NewManagedServicePage() {
     (cat: Category) => cat.name === formData.category
   );
 
+  const effectiveGrade = isOtherCategory ? "default" : selectedCategory?.grade;
+
   // Calculate price in real-time
   const priceCalculation = useMemo(() => {
-    return calculatePrice(selectedCategory?.grade, formData.urgency, settings);
-  }, [selectedCategory?.grade, formData.urgency, settings]);
+    return calculatePrice(effectiveGrade, formData.urgency, settings);
+  }, [effectiveGrade, formData.urgency, settings]);
 
   const { data: userData } = useQuery({
     queryKey: ["currentUser"],
@@ -601,7 +603,7 @@ export default function NewManagedServicePage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-700">
-                      Base Price (Category: {selectedCategory?.grade || "N/A"}):
+                      Base Price (Category: {effectiveGrade || "N/A"}):
                     </span>
                     <span className="font-semibold text-gray-900">
                       ${priceCalculation.basePrice.toLocaleString()}
