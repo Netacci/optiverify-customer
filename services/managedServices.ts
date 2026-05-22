@@ -18,6 +18,7 @@ export interface ManagedServiceRequestData {
   urgency: string;
   complianceLevel: "commercial" | "government" | "regulated";
   deliveryLocation: string;
+  deliveryAddress?: string;
   internalDeadline?: string;
   // Legacy fields for backward compatibility
   specifications?: string;
@@ -47,6 +48,7 @@ export interface ManagedService {
   specifications: string;
   quantity: string;
   deliveryLocation: string;
+  deliveryAddress?: string;
   internalDeadline?: string;
   budget?: string;
   deadline?: string;

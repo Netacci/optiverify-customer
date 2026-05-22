@@ -96,6 +96,7 @@ export default function NewManagedServicePage() {
     urgency: "",
     complianceLevel: "commercial" as "commercial" | "government" | "regulated",
     deliveryLocation: "",
+    deliveryAddress: "",
     internalDeadline: "",
   });
 
@@ -577,6 +578,23 @@ export default function NewManagedServicePage() {
                       ))}
                     </select>
                   </div>
+                </div>
+                <div className="mt-3">
+                  <label
+                    htmlFor="deliveryAddress"
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    Address <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="deliveryAddress"
+                    name="deliveryAddress"
+                    value={formData.deliveryAddress}
+                    onChange={handleChange}
+                    placeholder="Street address, city, ZIP"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  />
                 </div>
               </div>
 
