@@ -95,12 +95,36 @@ export const syncPaymentStatus = async (
 export const syncUserPayments = async (): Promise<{
   success: boolean;
   message: string;
-  data?: { syncedCount: number; subscriptionUpdated: boolean };
+  data?: {
+    syncedCount: number;
+    subscriptionUpdated: boolean;
+    subscriptionPaymentId?: string | null;
+  };
 }> => {
   const response = await authenticatedRequest.post<{
     success: boolean;
     message: string;
-    data?: { syncedCount: number; subscriptionUpdated: boolean };
+    data?: {
+      syncedCount: number;
+      subscriptionUpdated: boolean;
+      subscriptionPaymentId?: string | null;
+    };
   }>("/api/payments/sync");
+  return response.data;
+};
+
+/**
+ * Most recent succeeded subscription payment for the current user.
+ * Used by the payment-success page to link to the resulting transaction,
+ * regardless of whether the webhook or the client-side sync activated it.
+ */
+export const getLatestSubscriptionPayment = async (): Promise<{
+  success: boolean;
+  data?: { id: string; planType: string; amount: number; paidAt: string };
+}> => {
+  const response = await authenticatedRequest.get<{
+    success: boolean;
+    data?: { id: string; planType: string; amount: number; paidAt: string };
+  }>("/api/payments/latest-subscription");
   return response.data;
 };

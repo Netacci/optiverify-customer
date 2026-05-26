@@ -326,7 +326,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </p>
             </div>
             <Link
-              href="/dashboard/payment-plans"
+              href="/payment-plans"
               className="text-sm font-semibold text-yellow-800 hover:text-yellow-900 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 rounded-lg transition-colors"
             >
               Renew Now →

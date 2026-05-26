@@ -2,13 +2,23 @@ import { authenticatedRequest } from "@/lib/requestMethod";
 
 export interface Receipt {
   id: string;
-  type: "match_report" | "managed_service" | "managed_service_savings_fee" | "top_up";
+  type:
+    | "match_report"
+    | "managed_service"
+    | "managed_service_savings_fee"
+    | "top_up"
+    | "subscription";
   amount: number;
   currency: string;
   planType?: string;
   paidAt: string;
   createdAt: string;
   paymentMethod?: "stripe" | "credits";
+  subscription?: {
+    plan: string;
+    period: "monthly" | "annual";
+    credits: number;
+  };
   request?: {
     id: string;
     name?: string;

@@ -63,6 +63,14 @@ export default function PaymentPlansPage() {
   const user = userData?.data?.user;
   const isActiveSubscriber =
     subscriptionData?.data?.subscriptionStatus === "active";
+  // Renewal context, inferred from state — no URL flag needed: an expired
+  // subscriber choosing a plan with no buyer request attached. Scoped to
+  // `!requestId` so report-unlock checkouts (which carry a requestId) are
+  // unaffected and still show the one-time plan.
+  const isRenewal =
+    !requestId &&
+    !isTopUp &&
+    subscriptionData?.data?.subscriptionStatus === "expired";
   const settings = settingsData?.data || {
     extraCreditPrice: 10,
     savingsFeePercentage: 8,
@@ -181,7 +189,19 @@ export default function PaymentPlansPage() {
           hasToggle: false,
         },
       ]
+    : isRenewal
+    ? // Renewal: only subscription plans make sense (one-time/basic is tied to a request)
+      BASE_PLANS.filter((p) => p.id === "starter" || p.id === "professional")
     : BASE_PLANS;
+
+  // For renewal, default the selection to the first available subscription plan,
+  // since the initial "one-time" default isn't offered in the renewal flow.
+  useEffect(() => {
+    if (!router.isReady || !isRenewal || pricingPlans.length === 0) return;
+    if (!pricingPlans.some((p) => p.id === selectedPlan)) {
+      setSelectedPlan(pricingPlans[0].id as CheckoutRequest["planType"]);
+    }
+  }, [router.isReady, isRenewal, pricingPlans, selectedPlan]);
 
   const checkoutMutation = useMutation({
     mutationFn: createCheckoutSession,
@@ -217,7 +237,12 @@ export default function PaymentPlansPage() {
     // For top-up without a requestId, we need to handle differently
     // For now, if it's a top-up and no requestId, we'll need to create a dummy request or handle it specially
 
-    if (!requestId && !isTopUp) {
+    // Only the one-time/basic "unlock this report" plan needs a buyer request.
+    // Subscriptions and top-ups never do, so let those through regardless of
+    // how the user arrived (this also covers renewals).
+    const selectedIsSubscription =
+      selectedPlan === "starter" || selectedPlan === "professional";
+    if (!requestId && !isTopUp && !selectedIsSubscription) {
       toast.error("Please submit a request first to unlock payment options");
       router.push("/submit-request");
       return;
@@ -280,11 +305,17 @@ export default function PaymentPlansPage() {
         <div className="max-w-6xl mx-auto">
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {isActiveSubscriber ? "Top Up Credits" : "Payment Plans"}
+            {isActiveSubscriber
+              ? "Top Up Credits"
+              : isRenewal
+              ? "Renew Your Plan"
+              : "Payment Plans"}
           </h1>
           <p className="text-gray-600">
             {isActiveSubscriber
               ? "Add credits to unlock match reports ($10 per credit)"
+              : isRenewal
+              ? "Choose a plan to reactivate your subscription"
               : "Choose the plan that works best for your sourcing needs"}
           </p>
         </div>

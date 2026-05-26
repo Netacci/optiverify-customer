@@ -62,6 +62,13 @@ export default function TransactionsPage() {
         </span>
       );
     }
+    if (type === "subscription") {
+      return (
+        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
+          Subscription
+        </span>
+      );
+    }
     return (
       <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
         Managed Service
@@ -82,6 +89,9 @@ export default function TransactionsPage() {
       return `Top-up - ${transaction.credits} credit${
         transaction.credits && transaction.credits > 1 ? "s" : ""
       }`;
+    }
+    if (transaction.type === "subscription") {
+      return transaction.subscription?.plan || "Subscription";
     }
     return transaction.service?.category || "Managed Service";
   };

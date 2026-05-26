@@ -191,6 +191,13 @@ export default function TransactionDetailsPage() {
         </span>
       );
     }
+    if (type === "subscription") {
+      return (
+        <span className="px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
+          Subscription
+        </span>
+      );
+    }
     return (
       <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800">
         Managed Service
@@ -209,6 +216,9 @@ export default function TransactionDetailsPage() {
       return `Top-up - ${transaction.credits} credit${
         transaction.credits && transaction.credits > 1 ? "s" : ""
       }`;
+    }
+    if (transaction.type === "subscription") {
+      return transaction.subscription?.plan || "Subscription";
     }
     return transaction.service?.category || "Managed Service";
   };
@@ -419,6 +429,32 @@ export default function TransactionDetailsPage() {
                     <div>
                       <p className="text-sm text-gray-600">Price per Credit</p>
                       <p className="text-sm text-gray-900">$10.00</p>
+                    </div>
+                  </div>
+                </div>
+              ) : transaction.type === "subscription" ? (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-4">
+                    Subscription Details
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Plan</p>
+                      <p className="text-lg font-medium text-gray-900">
+                        {transaction.subscription?.plan || transaction.planType || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Billing Period</p>
+                      <p className="text-lg font-medium text-gray-900 capitalize">
+                        {transaction.subscription?.period || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Credits Added</p>
+                      <p className="text-lg font-medium text-gray-900">
+                        {transaction.subscription?.credits ?? 0} credit{(transaction.subscription?.credits ?? 0) === 1 ? "" : "s"}
+                      </p>
                     </div>
                   </div>
                 </div>

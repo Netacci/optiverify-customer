@@ -613,7 +613,7 @@ export default function BillingPage() {
                   </p>
                 </div>
                 <Link
-                  href="/dashboard/payment-plans"
+                  href="/payment-plans"
                   className="px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm font-semibold hover:bg-yellow-700 transition-colors"
                 >
                   Renew Now
